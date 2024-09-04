@@ -6,30 +6,32 @@ import platform
 import subprocess
 import threading
 
-CONFIG_FILE = "config.json"
+CONFIG_DIR = "configurations"
+DEFAULT_CONFIG_FILE = "config.json"
 
-def load_config():
+# Ensure the configurations directory exists
+os.makedirs(CONFIG_DIR, exist_ok=True)
+
+
+def load_config(file_path):
     """
     Load configuration from a JSON file.
 
-    The function reads the configuration file specified by CONFIG_FILE
-    and returns the contents as a dictionary. If the file does not exist,
-    it returns None.
+    Args:
+        file_path (str): Path to the JSON file to load.
 
     Returns:
         dict or None: The configuration data as a dictionary, or None if the file does not exist.
     """
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as file:
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
             return json.load(file)
     return None
 
+
 def save_config(username, ip_address, key_path):
     """
-    Save configuration to a JSON file.
-
-    The function writes the provided username, IP address, and key file path
-    to the configuration file specified by CONFIG_FILE.
+    Save configuration to a JSON file in the configurations directory.
 
     Args:
         username (str): The username for SSH connection.
@@ -41,18 +43,34 @@ def save_config(username, ip_address, key_path):
         "ip_address": ip_address,
         "key_path": key_path
     }
-    with open(CONFIG_FILE, 'w') as file:
+
+    # Check if the default configuration file already exists
+    default_file_path = os.path.join(CONFIG_DIR, DEFAULT_CONFIG_FILE)
+    if os.path.exists(default_file_path):
+        existing_config = load_config(default_file_path)
+        if existing_config == config_data:
+            return  # No changes, do nothing
+
+    # Save to a new file if different
+    base_name, ext = os.path.splitext(DEFAULT_CONFIG_FILE)
+    counter = 1
+    new_file_name = f"{base_name}_{counter}{ext}"
+    new_file_path = os.path.join(CONFIG_DIR, new_file_name)
+    while os.path.exists(new_file_path):
+        counter += 1
+        new_file_name = f"{base_name}_{counter}{ext}"
+        new_file_path = os.path.join(CONFIG_DIR, new_file_name)
+
+    with open(new_file_path, 'w') as file:
         json.dump(config_data, file)
+
 
 def connect_to_instance():
     """
     Connect to a remote SSH instance.
 
-    The function retrieves user input for SSH connection details, validates
-    them, saves the configuration, and initiates a new terminal window for SSH.
-    If any field is missing, an error message is shown.
-
-    The SSH command is run in a new thread to avoid blocking the GUI.
+    Retrieves user input for SSH connection details, validates them, saves the configuration,
+    and initiates a new terminal window for SSH. If any field is missing, an error message is shown.
     """
     username = username_entry.get()
     ip_address = ip_entry.get()
@@ -65,12 +83,13 @@ def connect_to_instance():
     else:
         messagebox.showerror("Error", "Please fill in all fields")
 
+
 def open_new_terminal_and_ssh(key_path, username, ip_address):
     """
     Open a new terminal and initiate an SSH connection.
 
-    The function constructs the SSH command based on the provided key path, username,
-    and IP address, and executes it in a new terminal window. It supports macOS and Linux.
+    Constructs the SSH command based on the provided key path, username, and IP address,
+    and executes it in a new terminal window. Supports macOS and Linux.
 
     Args:
         key_path (str): The file path to the SSH key.
@@ -99,14 +118,13 @@ def open_new_terminal_and_ssh(key_path, username, ip_address):
     else:
         messagebox.showerror("Error", f"Unsupported operating system: {current_os}")
 
+
 def download_file():
     """
     Download a file from the remote instance.
 
-    The function retrieves user input for SSH connection details, remote file path,
-    and local destination path. It validates the inputs and starts a new thread
-    to execute the SCP command for downloading the file.
-
+    Retrieves user input for SSH connection details, remote file path, and local destination path.
+    Validates the inputs and starts a new thread to execute the SCP command for downloading the file.
     If any field is missing, an error message is shown.
     """
     username = username_entry.get()
@@ -116,19 +134,19 @@ def download_file():
     local_path = local_path_entry.get()
 
     if username and ip_address and key_path and remote_path and local_path:
-        thread = threading.Thread(target=run_scp_command, args=(key_path, username, ip_address, remote_path, local_path, "download"))
+        thread = threading.Thread(target=run_scp_command,
+                                  args=(key_path, username, ip_address, remote_path, local_path, "download"))
         thread.start()
     else:
         messagebox.showerror("Error", "Please fill in all fields for downloading")
+
 
 def upload_file():
     """
     Upload a file to the remote instance.
 
-    The function retrieves user input for SSH connection details, local file path,
-    and remote destination path. It validates the inputs and starts a new thread
-    to execute the SCP command for uploading the file.
-
+    Retrieves user input for SSH connection details, local file path, and remote destination path.
+    Validates the inputs and starts a new thread to execute the SCP command for uploading the file.
     If any field is missing, an error message is shown.
     """
     username = username_entry.get()
@@ -138,17 +156,18 @@ def upload_file():
     remote_path = remote_path_upload_entry.get()
 
     if username and ip_address and key_path and local_path and remote_path:
-        thread = threading.Thread(target=run_scp_command, args=(key_path, username, ip_address, local_path, remote_path, "upload"))
+        thread = threading.Thread(target=run_scp_command,
+                                  args=(key_path, username, ip_address, local_path, remote_path, "upload"))
         thread.start()
     else:
         messagebox.showerror("Error", "Please fill in all fields for uploading")
+
 
 def run_scp_command(key_path, username, ip_address, src_path, dest_path, direction):
     """
     Run an SCP command for file transfer.
 
-    The function constructs and executes the SCP command based on the provided parameters
-    for downloading or uploading files.
+    Constructs and executes the SCP command based on the provided parameters for downloading or uploading files.
 
     Args:
         key_path (str): The file path to the SSH key.
@@ -165,12 +184,13 @@ def run_scp_command(key_path, username, ip_address, src_path, dest_path, directi
         command = f"scp -i {key_path} -r {src_path} {username}@{ip_address}:{dest_path}"
         subprocess.run(["/bin/bash", "-c", command])
 
+
 def browse_key_file():
     """
     Open a file dialog to select an SSH key file.
 
-    The function allows the user to browse and select a file, and then updates
-    the SSH key file entry field with the selected file path.
+    Allows the user to browse and select a file, and then updates the SSH key file entry field
+    with the selected file path.
     """
     key_path = filedialog.askopenfilename(
         title="Select SSH Key",
@@ -179,12 +199,13 @@ def browse_key_file():
     key_file_entry.delete(0, tk.END)
     key_file_entry.insert(0, key_path)
 
+
 def browse_local_path():
     """
     Open a directory dialog to select a local destination path.
 
-    The function allows the user to browse and select a directory, and then updates
-    the local destination path entry field with the selected directory path.
+    Allows the user to browse and select a directory, and then updates the local destination
+    path entry field with the selected directory path.
     """
     local_path = filedialog.askdirectory(
         title="Select Local Destination"
@@ -192,18 +213,43 @@ def browse_local_path():
     local_path_entry.delete(0, tk.END)
     local_path_entry.insert(0, local_path)
 
+
 def browse_local_file():
     """
     Open a file dialog to select a local file for upload.
 
-    The function allows the user to browse and select a file, and then updates
-    the local file path entry field with the selected file path.
+    Allows the user to browse and select a file, and then updates the local file path entry
+    field with the selected file path.
     """
     local_path = filedialog.askopenfilename(
         title="Select File to Upload"
     )
     local_file_entry.delete(0, tk.END)
     local_file_entry.insert(0, local_path)
+
+
+def load_config_file():
+    """
+    Load configuration from a user-selected JSON file.
+
+    Opens a file dialog for the user to select a JSON configuration file, loads its content,
+    and updates the GUI fields with the loaded values.
+    """
+    file_path = filedialog.askopenfilename(
+        title="Select Configuration File",
+        initialdir=CONFIG_DIR,
+        filetypes=(("JSON files", "*.json"), ("All files", "*.*")),
+    )
+    if file_path:
+        config = load_config(file_path)
+        if config:
+            username_entry.delete(0, tk.END)
+            username_entry.insert(0, config.get("username", ""))
+            ip_entry.delete(0, tk.END)
+            ip_entry.insert(0, config.get("ip_address", ""))
+            key_file_entry.delete(0, tk.END)
+            key_file_entry.insert(0, config.get("key_path", ""))
+
 
 # Create the main window
 root = tk.Tk()
@@ -235,6 +281,9 @@ browse_button.grid(row=2, column=2, padx=5)
 
 connect_button = tk.Button(connect_frame, text="Connect", command=connect_to_instance)
 connect_button.grid(row=3, column=0, columnspan=3, pady=10)
+
+load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file)
+load_config_button.grid(row=4, column=0, columnspan=3, pady=10)
 
 # ---- Column 2: Download ----
 download_frame = tk.LabelFrame(root, text="Download from instance", padx=10, pady=10)

@@ -41,6 +41,10 @@ The application window will display three sections:
 
 **N.B** Use the "Browse" buttons next to the file path fields to select files and directories via file dialogs.
 
+2. **Configuration management**
+- **Loading Configuration**: Use the "Load Config" button in the "Connect to instance" section to open a file dialog and select a JSON configuration file from the configurations folder. The application will load the selected configuration and update the input fields with the saved values.
+- **Saving Configuration**: When you connect to an SSH instance, the application saves the configuration to a new file in the configurations folder. If the new configuration differs from the existing default configuration (config.json), it will be saved in a file with an incremental number (e.g., config_1.json, config_2.json, etc.) to avoid overwriting.
+
 ## Notes
 The application saves the SSH connection settings in a file named config.json. This file is used to retain the last entered SSH credentials and key path.
 
