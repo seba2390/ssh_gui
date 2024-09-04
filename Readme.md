@@ -20,7 +20,7 @@ A graphical user interface (GUI) application for managing SSH connections and fi
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/yourusername/ssh_gui.git
+   git clone https://github.com/seba2390/ssh_gui.git
 ## Usage
 
 1. **Running the application**
