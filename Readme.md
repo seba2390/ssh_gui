@@ -25,6 +25,7 @@ A graphical user interface (GUI) application for managing SSH connections and fi
 
 1. **Running the application**
     ```bash
+    cd ssh_gui
     python ssh_gui.py
 The application window will display three sections:
 
