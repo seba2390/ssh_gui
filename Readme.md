@@ -21,15 +21,18 @@ A graphical user interface (GUI) application for managing SSH connections and fi
 
    ```bash
    git clone https://github.com/seba2390/ssh_gui.git
+   ```
 ## Usage
-
 1. **Running the application**
-    go into the repo:
+
+    move into the repo:
     ```bash
     cd ssh_gui
+   ```
     run the python script:
     ```bash
     python ssh_gui.py
+   ```
 The application window will display three sections:
 
 - **Connect to instance**: Enter the SSH username, IP address, and path to the SSH key file. Click "Connect" to initiate an SSH session.
