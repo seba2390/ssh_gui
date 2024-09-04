@@ -1,10 +1,11 @@
 # SSH GUI Tool
 
-A graphical user interface (GUI) application for managing SSH connections and file transfers using Python and Tkinter. This tool allows users to connect to remote SSH instances, download files from, and upload files to those instances.
+A graphical user interface (GUI) application written in **native Python** using Tkinter for managing SSH connections and file transfers. This tool allows users to connect to remote SSH instances, download files from, and upload files to those instances, all without needing external libraries beyond the standard Python installation.
 
 ## Features
 
 - **Connect to Remote SSH Instances**: Input SSH credentials and open a new terminal window to start an SSH session.
+- **Remote File Browser**: A built-in GUI browser to explore remote directories over SSH. Easily navigate directories, view files, and select files or directories for download/upload.
 - **Download Files**: Retrieve files from a remote server to a local destination.
 - **Upload Files**: Transfer files from a local system to a remote server.
 - **Configuration Management**: Save and load SSH connection settings for convenience.
@@ -45,7 +46,16 @@ The application window will display three sections:
 - **Loading Configuration**: Use the "Load Config" button in the "Connect to instance" section to open a file dialog and select a JSON configuration file from the configurations folder. The application will load the selected configuration and update the input fields with the saved values.
 - **Saving Configuration**: When you connect to an SSH instance, the application saves the configuration to a new file in the configurations folder. If the new configuration differs from the existing default configuration (config.json), it will be saved in a file with an incremental number (e.g., config_1.json, config_2.json, etc.) to avoid overwriting.
 
+3. **Remote File Browser**
+
+- Use the Remote Browser to navigate the file structure of your SSH-connected remote instance.
+In both the "Download from instance" and "Upload to instance" sections, you can click the "Browse" button next to the file path fields to open a remote file browser. This allows you to visually navigate directories on the remote server, and select the files or directories to transfer.
 ## Notes
 The application saves the SSH connection settings in a file named config.json. This file is used to retain the last entered SSH credentials and key path.
 
 The application currently supports macOS and Linux. If you're using a different operating system, you'll see an error message indicating unsupported OS.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
