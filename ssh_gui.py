@@ -100,14 +100,41 @@ def open_new_terminal_and_ssh(key_path, username, ip_address):
     Open a new terminal window and initiate an SSH session.
 
     Args:
-        key_path (str): The path to the SSH key file.
-        username (str): The SSH username.
-        ip_address (str): The IP address of the remote server.
+        key_path (str): The path to the SSH private key file used for authentication. This key
+                        allows secure, key-based SSH login to the remote server instead of using a password.
+        username (str): The SSH username to connect as on the remote server. This should correspond
+                        to a valid user account on the server.
+        ip_address (str): The IP address of the remote server to connect to.
+
+    SSH Command Options:
+        -i {key_path}: Specifies the path to the private SSH key file for key-based authentication.
+                       This allows the user to log in securely without a password.
+
+        -o StrictHostKeyChecking=no: Disables the prompt that asks to confirm the server's public key.
+                                     Automatically adds the host to the known hosts list. Useful for automated
+                                     scripts to avoid interaction, but this reduces security as it skips host verification.
+
+        -o ServerAliveInterval=60: Sends a "keep-alive" message to the server every 60 seconds. This prevents
+                                   the connection from timing out during periods of inactivity.
+
+        -o ServerAliveCountMax=2: Specifies the maximum number of keep-alive messages (set by `ServerAliveInterval`)
+                                  that can be sent without receiving a response before the client disconnects. In this case,
+                                  the client will disconnect if the server does not respond after two keep-alive messages.
+
+    This function opens a new terminal window based on the current operating system (macOS or Linux) and runs the SSH command.
+    If the operating system is unsupported, an error message is shown.
+
+    macOS: Uses AppleScript to open Terminal and run the SSH command.
+    Linux: Uses `gnome-terminal` to run the SSH command in a new terminal window.
     """
-    ssh_command = f"ssh -i {key_path} -o StrictHostKeyChecking=no {username}@{ip_address}"
+
+    # SSH command with keep-alive options to prevent idle timeout
+    ssh_command = f"ssh -i {key_path} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=2 {username}@{ip_address}"
+
+    # Determine the current operating system
     current_os = platform.system()
 
-    # Open a terminal depending on the OS
+    # For macOS (Darwin), use AppleScript to open a new terminal window
     if current_os == "Darwin":  # macOS
         terminal_command = f'''
         tell application "Terminal"
@@ -117,10 +144,12 @@ def open_new_terminal_and_ssh(key_path, username, ip_address):
         '''
         subprocess.Popen(["osascript", "-e", terminal_command])
 
+    # For Linux, use gnome-terminal to open a new terminal window
     elif current_os == "Linux":
         terminal_command = f"gnome-terminal -- bash -c '{ssh_command}; exec bash'"
         subprocess.Popen(terminal_command, shell=True)
 
+    # Unsupported operating system
     else:
         messagebox.showerror("Error", f"Unsupported operating system: {current_os}")
 
