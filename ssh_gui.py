@@ -76,7 +76,6 @@ def save_config(username, ip_address, key_path):
         json.dump(config_data, file)
 
 
-
 # SSH connection and file transfer related functions
 
 def connect_to_instance():
@@ -218,47 +217,64 @@ def browse_local_path():
 
 def browse_local_file():
     """
-    Create a popup window that allows the user to choose between selecting a file or a directory.
+    Replaces the 'Browse' button with a dropdown menu to choose between selecting a file or directory.
     """
-    # Create a new top-level window (a popup window)
-    popup = Toplevel(root)
-    popup.title("Select File or Directory")
+    # Remove the current Browse button and replace it with an OptionMenu
+    browse_local_file_button.grid_remove()
 
-    # Set the size of the popup window
-    popup.geometry("300x100")
+    # Options for the dropdown menu
+    options = ["Select File", "Select Directory"]
 
-    # Label to prompt the user
-    label = tk.Label(popup, text="Do you want to select a file or directory?")
-    label.pack(pady=10)
+    # Variable to store the selected option
+    selected_option = tk.StringVar(root)
+    selected_option.set("Select")  # Placeholder text
 
-    # Button for selecting a file
-    file_button = tk.Button(popup, text="Select File", command=lambda: select_file(popup))
-    file_button.pack(side=tk.LEFT, padx=20)
+    # Create the OptionMenu dropdown
+    dropdown = tk.OptionMenu(upload_frame, selected_option, *options, command=handle_local_selection)
+    dropdown.grid(row=0, column=2, padx=5)
 
-    # Button for selecting a directory
-    directory_button = tk.Button(popup, text="Select Directory", command=lambda: select_directory(popup))
-    directory_button.pack(side=tk.RIGHT, padx=20)
+    # Once the user makes a choice, the `handle_local_selection` will take care of it
 
-def select_file(popup):
+
+def handle_local_selection(selection):
     """
-    Open a file dialog to select a single file and close the popup.
+    Handle the user's selection from the dropdown.
+    """
+    if selection == "Select File":
+        select_file()
+    elif selection == "Select Directory":
+        select_directory()
+
+    # After the selection is made and the dialog is opened, restore the original Browse button
+    restore_browse_button()
+
+
+def restore_browse_button():
+    """
+    Restore the original 'Browse' button after a file/directory has been selected.
+    """
+    # Remove the dropdown and bring back the Browse button
+    browse_local_file_button.grid()
+
+
+def select_file():
+    """
+    Open a file dialog to select a single file and display the path in the entry.
     """
     local_path = filedialog.askopenfilename(title="Select File to Upload")
     if local_path:  # If a file is selected, insert it into the entry
         local_file_entry.delete(0, tk.END)
         local_file_entry.insert(0, local_path)
-    popup.destroy()  # Close the popup after selection
 
-def select_directory(popup):
+
+def select_directory():
     """
-    Open a directory dialog to select a directory and close the popup.
+    Open a directory dialog to select a directory and display the path in the entry.
     """
     local_directory = filedialog.askdirectory(title="Select Directory to Upload")
     if local_directory:  # If a directory is selected, insert it into the entry
         local_file_entry.delete(0, tk.END)
         local_file_entry.insert(0, local_directory)
-    popup.destroy()  # Close the popup after selection
-
 
 
 def browse_remote_file():
