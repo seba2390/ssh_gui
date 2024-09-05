@@ -1,9 +1,8 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, Toplevel
 import json
 import platform
 import threading
-from tkinter import ttk
 import os
 import subprocess
 
@@ -129,8 +128,8 @@ def open_new_terminal_and_ssh(key_path, username, ip_address):
 
 def download_file():
     """
-    Download a file from a remote server using SCP.
-    Starts a new thread to run the SCP command for downloading.
+    Download files from a remote server using Rsync.
+    Starts a new thread to run rsync commands for downloading.
     """
     username = username_entry.get()
     ip_address = ip_entry.get()
@@ -139,7 +138,8 @@ def download_file():
     local_path = local_path_entry.get()
 
     if username and ip_address and key_path and remote_path and local_path:
-        thread = threading.Thread(target=run_scp_command,
+        # Start the rsync process in a separate thread
+        thread = threading.Thread(target=run_rsync_command,
                                   args=(key_path, username, ip_address, remote_path, local_path, "download"))
         thread.start()
     else:
@@ -148,8 +148,8 @@ def download_file():
 
 def upload_file():
     """
-    Upload a file to a remote server using SCP.
-    Starts a new thread to run the SCP command for uploading.
+    Upload files to a remote server using Rsync.
+    Starts a new thread to run rsync commands for uploading.
     """
     username = username_entry.get()
     ip_address = ip_entry.get()
@@ -158,30 +158,36 @@ def upload_file():
     remote_path = remote_path_upload_entry.get()
 
     if username and ip_address and key_path and local_path and remote_path:
-        thread = threading.Thread(target=run_scp_command,
+        # Start the rsync process in a separate thread
+        thread = threading.Thread(target=run_rsync_command,
                                   args=(key_path, username, ip_address, local_path, remote_path, "upload"))
         thread.start()
     else:
         messagebox.showerror("Error", "Please fill in all fields for uploading")
 
 
-def run_scp_command(key_path, username, ip_address, src_path, dest_path, direction):
+def run_rsync_command(key_path, username, ip_address, src_path, dest_path, direction):
     """
-    Run an SCP command to transfer files between local and remote servers.
+    Run an rsync command to transfer files between local and remote servers efficiently.
 
     Args:
         key_path (str): The path to the SSH key file.
         username (str): The SSH username.
         ip_address (str): The IP address of the remote server.
-        src_path (str): The source path of the file.
-        dest_path (str): The destination path for the file.
+        src_path (str): The source path of the file or folder.
+        dest_path (str): The destination path for the file or folder.
         direction (str): "download" or "upload" to indicate the transfer direction.
     """
+    # Base rsync command with options:
+    # -a preserves symbolic links, permissions, timestamps, etc.
+    # -P shows progress and handles partial transfers
+    # -e 'ssh -i {key_path}' uses the provided SSH key for the connection
+
     if direction == "download":
-        command = f"scp -i {key_path} -r {username}@{ip_address}:{src_path} {dest_path}"
+        command = f"rsync -azP -e 'ssh -i {key_path}' {username}@{ip_address}:{src_path} {dest_path}"
         subprocess.run(["/bin/bash", "-c", command])
     elif direction == "upload":
-        command = f"scp -i {key_path} -r {src_path} {username}@{ip_address}:{dest_path}"
+        command = f"rsync -azP -e 'ssh -i {key_path}' {src_path} {username}@{ip_address}:{dest_path}"
         subprocess.run(["/bin/bash", "-c", command])
 
 
@@ -212,13 +218,47 @@ def browse_local_path():
 
 def browse_local_file():
     """
-    Open a file dialog to select the local file to upload.
+    Create a popup window that allows the user to choose between selecting a file or a directory.
     """
-    local_path = filedialog.askopenfilename(
-        title="Select File to Upload"
-    )
-    local_file_entry.delete(0, tk.END)
-    local_file_entry.insert(0, local_path)
+    # Create a new top-level window (a popup window)
+    popup = Toplevel(root)
+    popup.title("Select File or Directory")
+
+    # Set the size of the popup window
+    popup.geometry("300x100")
+
+    # Label to prompt the user
+    label = tk.Label(popup, text="Do you want to select a file or directory?")
+    label.pack(pady=10)
+
+    # Button for selecting a file
+    file_button = tk.Button(popup, text="Select File", command=lambda: select_file(popup))
+    file_button.pack(side=tk.LEFT, padx=20)
+
+    # Button for selecting a directory
+    directory_button = tk.Button(popup, text="Select Directory", command=lambda: select_directory(popup))
+    directory_button.pack(side=tk.RIGHT, padx=20)
+
+def select_file(popup):
+    """
+    Open a file dialog to select a single file and close the popup.
+    """
+    local_path = filedialog.askopenfilename(title="Select File to Upload")
+    if local_path:  # If a file is selected, insert it into the entry
+        local_file_entry.delete(0, tk.END)
+        local_file_entry.insert(0, local_path)
+    popup.destroy()  # Close the popup after selection
+
+def select_directory(popup):
+    """
+    Open a directory dialog to select a directory and close the popup.
+    """
+    local_directory = filedialog.askdirectory(title="Select Directory to Upload")
+    if local_directory:  # If a directory is selected, insert it into the entry
+        local_file_entry.delete(0, tk.END)
+        local_file_entry.insert(0, local_directory)
+    popup.destroy()  # Close the popup after selection
+
 
 
 def browse_remote_file():
