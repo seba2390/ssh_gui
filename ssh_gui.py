@@ -195,7 +195,8 @@ def download_file():
     local_path = local_path_entry.get()
 
     if username and ip_address and key_path and remote_path and local_path:
-        # Reset the progress bar
+        # Show the progress bar and reset its value
+        download_progress.grid()  # Make the progress bar visible
         download_progress['value'] = 0
         # Update status label to show the download has started
         download_status_label.config(text="Downloading...")
@@ -220,7 +221,8 @@ def upload_file():
     remote_path = remote_path_upload_entry.get()
 
     if username and ip_address and key_path and local_path and remote_path:
-        # Reset the progress bar
+        # Show the progress bar and reset its value
+        upload_progress.grid()  # Make the progress bar visible
         upload_progress['value'] = 0
         # Update status label to show the upload has started
         upload_status_label.config(text="Uploading...")
@@ -577,6 +579,10 @@ upload_button.grid(row=2, column=0, columnspan=3, pady=10)
 
 upload_status_label = tk.Label(upload_frame, text="")  # Upload status label
 upload_status_label.grid(row=3, column=0, columnspan=3, pady=5)  # Place it under the upload button
+
+# After creating the progress bars, hide them initially
+download_progress.grid_remove()  # Hide the download progress bar
+upload_progress.grid_remove()    # Hide the upload progress bar
 
 # Run the application
 root.mainloop()
