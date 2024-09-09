@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel
+from tkinter import filedialog, messagebox, Toplevel, ttk
+import re
 import json
 import platform
 import threading
@@ -74,6 +75,34 @@ def save_config(username, ip_address, key_path):
     # Save the new configuration data to the new file
     with open(new_file_path, 'w') as file:
         json.dump(config_data, file)
+
+
+def is_remote_directory(key_path, username, ip_address, remote_path):
+    """
+    Check if the remote path is a directory using SSH.
+
+    Args:
+        key_path (str): Path to the SSH key.
+        username (str): SSH username.
+        ip_address (str): IP address of the remote server.
+        remote_path (str): Path on the remote server.
+
+    Returns:
+        bool: True if the remote path is a directory, False if it's a file.
+    """
+    # Prepare the SSH command to check if the path is a directory
+    ssh_command = f"ssh -i {key_path} {username}@{ip_address} 'test -d {remote_path} && echo directory || echo file'"
+
+    # Run the command and capture output
+    result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    if "directory" in result.stdout:
+        return True
+    elif "file" in result.stdout:
+        return False
+    else:
+        raise Exception(f"Unable to determine if {remote_path} is a directory or file. SSH Error: {result.stderr}")
+
 
 
 # SSH connection and file transfer related functions
@@ -166,9 +195,14 @@ def download_file():
     local_path = local_path_entry.get()
 
     if username and ip_address and key_path and remote_path and local_path:
+        # Reset the progress bar
+        download_progress['value'] = 0
+        # Update status label to show the download has started
+        download_status_label.config(text="Downloading...")
         # Start the rsync process in a separate thread
         thread = threading.Thread(target=run_rsync_command,
-                                  args=(key_path, username, ip_address, remote_path, local_path, "download"))
+                                  args=(key_path, username, ip_address, remote_path, local_path, "download",
+                                        download_status_label, download_progress))
         thread.start()
     else:
         messagebox.showerror("Error", "Please fill in all fields for downloading")
@@ -186,17 +220,23 @@ def upload_file():
     remote_path = remote_path_upload_entry.get()
 
     if username and ip_address and key_path and local_path and remote_path:
+        # Reset the progress bar
+        upload_progress['value'] = 0
+        # Update status label to show the upload has started
+        upload_status_label.config(text="Uploading...")
         # Start the rsync process in a separate thread
         thread = threading.Thread(target=run_rsync_command,
-                                  args=(key_path, username, ip_address, local_path, remote_path, "upload"))
+                                  args=(key_path, username, ip_address, local_path, remote_path, "upload",
+                                        upload_status_label, upload_progress))
         thread.start()
     else:
         messagebox.showerror("Error", "Please fill in all fields for uploading")
 
 
-def run_rsync_command(key_path, username, ip_address, src_path, dest_path, direction):
+def run_rsync_command(key_path, username, ip_address, src_path, dest_path, direction, status_label, progress_bar):
     """
-    Run an rsync command to transfer files between local and remote servers efficiently.
+    Run an rsync command to transfer files between local and remote servers efficiently,
+    update the status label, and reflect the progress in a progress bar.
 
     Args:
         key_path (str): The path to the SSH key file.
@@ -205,18 +245,80 @@ def run_rsync_command(key_path, username, ip_address, src_path, dest_path, direc
         src_path (str): The source path of the file or folder.
         dest_path (str): The destination path for the file or folder.
         direction (str): "download" or "upload" to indicate the transfer direction.
-    """
-    # Base rsync command with options:
-    # -a preserves symbolic links, permissions, timestamps, etc.
-    # -P shows progress and handles partial transfers
-    # -e 'ssh -i {key_path}' uses the provided SSH key for the connection
+        status_label (Label): The label to update with progress messages.
+        progress_bar (ttk.Progressbar): The progress bar to update during the transfer.
 
+    The function builds the rsync command with options:
+        -a: Preserves symbolic links, permissions, timestamps, etc.
+        -z: Enables compression during the transfer.
+        -P: Shows progress and allows partial transfers.
+        -e: Specifies the SSH command with the provided SSH key for authentication.
+
+    The status_label is updated to reflect the completion of the operation.
+    """
+    progress_bar['value'] = 0  # Reset progress bar
+    is_directory = False
+
+    # Determine if the source is a directory by checking with SSH for downloads or local check for uploads
+    if direction == "download":
+        is_directory = is_remote_directory(key_path, username, ip_address, src_path)
+    elif direction == "upload":
+        is_directory = os.path.isdir(src_path)
+
+    # Update the status label based on whether it's a directory or file
+    if is_directory:
+        status_label.config(text=f"{direction.capitalize()} in progress... (Folder)")
+    else:
+        status_label.config(text=f"{direction.capitalize()} in progress...")
+
+    # Construct the rsync command based on the direction
     if direction == "download":
         command = f"rsync -azP -e 'ssh -i {key_path}' {username}@{ip_address}:{src_path} {dest_path}"
-        subprocess.run(["/bin/bash", "-c", command])
     elif direction == "upload":
         command = f"rsync -azP -e 'ssh -i {key_path}' {src_path} {username}@{ip_address}:{dest_path}"
-        subprocess.run(["/bin/bash", "-c", command])
+    else:
+        raise Exception("Unsupported direction")
+
+    # Open the subprocess and capture real-time output
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+
+    # Regex to capture progress percentage from rsync output (e.g., "50.2%")
+    progress_regex = re.compile(r'(\d+)\%')
+
+    # Loop through the output of rsync
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+
+        # Update progress for files (based on percentage output)
+        if not is_directory:
+            match = progress_regex.search(output)
+            if match:
+                progress_percent = int(match.group(1))
+                progress_bar['value'] = progress_percent  # Update the progress bar
+                status_label.config(text=f"{direction.capitalize()} in progress... {progress_percent}%")
+
+        # For directories: Just update the progress bar without showing percentages
+        else:
+            if "to-check" in output:
+                # Parse "to-check" line to update progress for folder downloads
+                # e.g., rsync output line: "12345 files to-check=100/200"
+                match = re.search(r'to-check=(\d+)/(\d+)', output)
+                if match:
+                    checked = int(match.group(2)) - int(match.group(1))
+                    total = int(match.group(2))
+                    progress_percent = int((checked / total) * 100)
+                    progress_bar['value'] = progress_percent  # Update the progress bar for directories
+            progress_bar.update()  # Ensure progress bar is always updated
+
+    # Ensure the process has completed
+    process.wait()
+
+    # Final update after the process finishes
+    progress_bar['value'] = 100  # Ensure the bar reaches 100%
+    status_label.config(text=f"{direction.capitalize()} Complete!")
+
 
 
 # File dialog utility functions
@@ -426,6 +528,9 @@ load_config_button.grid(row=4, column=0, columnspan=3, pady=10)
 download_frame = tk.LabelFrame(root, text="Download from instance", padx=10, pady=10)
 download_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
+download_progress = ttk.Progressbar(download_frame, orient='horizontal', mode='determinate', length=300)
+download_progress.grid(row=4, column=0, columnspan=3, pady=5)
+
 tk.Label(download_frame, text="Remote File Path:").grid(row=0, column=0, sticky="w")
 remote_file_entry = tk.Entry(download_frame)
 remote_file_entry.grid(row=0, column=1)
@@ -443,9 +548,15 @@ browse_local_button.grid(row=1, column=2, padx=5)
 download_button = tk.Button(download_frame, text="Download", command=download_file)
 download_button.grid(row=2, column=0, columnspan=3, pady=10)
 
+download_status_label = tk.Label(download_frame, text="")  # Initialize with an empty string
+download_status_label.grid(row=3, column=0, columnspan=3, pady=5)  # Place it under the download button
+
 # ---- Column 3: Upload ----
 upload_frame = tk.LabelFrame(root, text="Upload to instance", padx=10, pady=10)
 upload_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+
+upload_progress = ttk.Progressbar(upload_frame, orient='horizontal', mode='determinate', length=300)
+upload_progress.grid(row=4, column=0, columnspan=3, pady=5)
 
 tk.Label(upload_frame, text="Local File Path:").grid(row=0, column=0, sticky="w")
 local_file_entry = tk.Entry(upload_frame)
@@ -463,6 +574,9 @@ browse_remote_path_button.grid(row=1, column=2, padx=5)
 
 upload_button = tk.Button(upload_frame, text="Upload", command=upload_file)
 upload_button.grid(row=2, column=0, columnspan=3, pady=10)
+
+upload_status_label = tk.Label(upload_frame, text="")  # Upload status label
+upload_status_label.grid(row=3, column=0, columnspan=3, pady=5)  # Place it under the upload button
 
 # Run the application
 root.mainloop()
