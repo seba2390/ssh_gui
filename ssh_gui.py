@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel, ttk
+from tkinter import filedialog, messagebox, ttk
 import re
 import json
 import platform
@@ -75,6 +75,27 @@ def save_config(username, ip_address, key_path):
     # Save the new configuration data to the new file
     with open(new_file_path, 'w') as file:
         json.dump(config_data, file)
+
+
+def test_connection():
+    """
+    Test the SSH connection by running a simple SSH command to check if the connection can be established.
+    """
+    username = username_entry.get()
+    ip_address = ip_entry.get()
+    key_path = key_file_entry.get()
+
+    if username and ip_address and key_path:
+        # SSH command to test connection (we use 'exit' to immediately close the connection after success)
+        ssh_command = f"ssh -i {key_path} -o StrictHostKeyChecking=no {username}@{ip_address} exit"
+        result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if result.returncode == 0:
+            messagebox.showinfo("Connection Test", "Connection successful!")
+        else:
+            messagebox.showerror("Connection Test", f"Connection failed: {result.stderr}")
+    else:
+        messagebox.showerror("Error", "Please fill in all fields")
 
 
 def is_remote_directory(key_path, username, ip_address, remote_path):
@@ -525,6 +546,9 @@ connect_button.grid(row=3, column=0, columnspan=3, pady=10)
 
 load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file)
 load_config_button.grid(row=4, column=0, columnspan=3, pady=10)
+
+test_connection_button = tk.Button(connect_frame, text="Test Connection", command=test_connection)
+test_connection_button.grid(row=5, column=0, columnspan=3, pady=10)
 
 # ---- Column 2: Download ----
 download_frame = tk.LabelFrame(root, text="Download from instance", padx=10, pady=10)
