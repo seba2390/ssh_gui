@@ -223,14 +223,27 @@ def run_rsync_command(key_path, username, ip_address, src_path, dest_path, direc
 
 def browse_key_file():
     """
-    Open a file dialog to select the SSH key file.
+    Open a file dialog to select the SSH key file, starting in ~/.ssh/ if it exists,
+    otherwise starting in the home directory.
     """
+    # Get the user's home directory
+    home_dir = os.path.expanduser("~")
+
+    # Check if ~/.ssh/ exists, otherwise default to the home directory
+    ssh_dir = os.path.join(home_dir, ".ssh")
+    initial_dir = ssh_dir if os.path.exists(ssh_dir) else home_dir
+
+    # Open the file dialog starting from the determined initial directory
     key_path = filedialog.askopenfilename(
+        initialdir=initial_dir,  # Start in ~/.ssh/ or ~
         title="Select SSH Key",
         filetypes=(("PEM files", "*.pem"), ("All files", "*.*")),
     )
-    key_file_entry.delete(0, tk.END)
-    key_file_entry.insert(0, key_path)
+
+    # If a file was selected, update the entry widget
+    if key_path:
+        key_file_entry.delete(0, tk.END)
+        key_file_entry.insert(0, key_path)
 
 
 def browse_local_path():

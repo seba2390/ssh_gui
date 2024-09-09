@@ -4,6 +4,34 @@ import os
 import subprocess
 
 
+def format_size(size_in_bytes):
+    """
+    Convert a size in bytes to a human-readable string with units (Bytes, KB, MB, GB, etc.)
+    using base 10 (1 KB = 1000 bytes).
+
+    Args:
+        size_in_bytes (int): The size in bytes.
+
+    Returns:
+        str: The human-readable size with the appropriate unit.
+    """
+    # Define the units
+    units = ["Bytes", "KB", "MB", "GB", "TB", "PB"]
+    size = float(size_in_bytes)
+    unit_index = 0
+
+    # Loop to find the appropriate unit
+    while size >= 1000 and unit_index < len(units) - 1:
+        size /= 1000
+        unit_index += 1
+
+    # Format the size with one decimal place, but avoid decimals for Bytes
+    if unit_index == 0:  # Bytes
+        return f"{int(size)} {units[unit_index]}"
+    else:
+        return f"{size:.1f} {units[unit_index]}"
+
+
 class RemoteFileBrowser:
     """
     A class to represent a remote file browser through an SSH connection.
@@ -112,6 +140,7 @@ class RemoteFileBrowser:
         # Execute 'ls -la' command on the remote server
         ls_output = self.execute_command(f'ls -la "{self.current_path}"')
         lines = ls_output.split('\n')[1:]  # Skip the first line (total)
+
         for line in lines:
             if line.strip():
                 parts = line.split()
@@ -119,12 +148,17 @@ class RemoteFileBrowser:
                     permissions, _, _, _, size, *_, name = parts
                     name = ' '.join(parts[8:])  # Join the name parts in case of spaces
 
+                    # Determine the type of the item (file, directory, or link)
                     if permissions.startswith('d'):
                         item_type = "Directory"
+                        size = ""  # Leave the size column blank for directories
                     elif permissions.startswith('l'):
                         item_type = "Link"
+                        size = ""  # Leave the size column blank for links
                     else:
                         item_type = "File"
+                        # Convert the size to human-readable format
+                        size = format_size(int(size))  # Display size only for files
 
                     self.tree.insert("", "end", text=name, values=(item_type, permissions, size))
 
