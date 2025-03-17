@@ -62,6 +62,22 @@ The application window will display three sections:
 
 - Use the Remote Browser to navigate the file structure of your SSH-connected remote instance.
 In both the "Download from instance" and "Upload to instance" sections, you can click the "Browse" button next to the file path fields to open a remote file browser. This allows you to visually navigate directories on the remote server, and select the files or directories to transfer.
+
+
+**(MacOS only) Creating application icon**
+- On MacOS it is possible to avoid having to open the program via terminal:
+   1. Open Automator.
+   2. Press File>New (CMD+N) and choose "Application".
+   3. Search for "Run Shell Script" under "Actions" in the LHS of the window.
+   4. fill out the script with:
+      ```bash
+      <path-to-python3> <path-to-ssh_gui_repo>/ssh_gui.py
+      ```
+      N.B. ```<path-to-python3>``` can be determined by opening terminal and running ```which python3``` and ```<path-to-ssh_gui_repo>``` is the path to where you ran ```git clone https://github.com/seba2390/ssh_gui.git```
+   5. Press File>Save (CMD+S) and save the application where you want.
+      N.B. you can drag this to the Dock for easy access. 
+
+
 ## Notes
 The application saves the SSH connection settings in a file named config.json. This file is used to retain the last entered SSH credentials and key path.
 
