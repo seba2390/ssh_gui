@@ -15,6 +15,11 @@ A graphical user interface (GUI) application written in **native Python** using 
 - Python 3.x
 - Tkinter (comes pre-installed with Python)
 - SSH client (such as OpenSSH)
+- (Optional) [Warp](https://www.warp.dev/i) terminal for MacOS
+   - Can be installed by [Download](https://app.warp.dev/get_warp?package=dmg) or by running:
+      ```bash
+      brew install --cask warp
+      ```
 
 ## Installation
 
@@ -23,6 +28,13 @@ A graphical user interface (GUI) application written in **native Python** using 
    ```bash
    git clone https://github.com/seba2390/ssh_gui.git
    ```
+
+2. **(Optional) Enable usage of [Warp](https://www.warp.dev/i) terminal**
+   ```bash
+   chmod +x src/run_in_warp.sh
+   ```
+   - allow system access first time running and restart GUI
+
 ## Usage
 1. **Running the application**
 
@@ -58,4 +70,3 @@ The application currently supports macOS and Linux. If you're using a different 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
