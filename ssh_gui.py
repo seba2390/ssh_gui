@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import platform
@@ -188,7 +189,7 @@ def open_new_terminal_and_ssh(key_path, username, ip_address, terminal_type):
 
     Note:
         For "Warp" on macOS, this function relies on the `src/run_in_warp.sh` script, which must be
-        executable and located in the `src/` directory relative to the Python script’s working directory.
+        executable and located in the `src/` directory relative to the Python script's working directory.
         Ensure Warp is installed at `/Applications/Warp.app` and the script has execute permissions (`chmod +x src/run_in_warp.sh`).
     """
     # Construct the SSH command with keep-alive options to prevent idle timeout
@@ -669,6 +670,32 @@ upload_status_label.grid(row=3, column=0, columnspan=3, pady=5)  # Place it unde
 # After creating the progress bars, hide them initially
 download_progress.grid_remove()  # Hide the download progress bar
 upload_progress.grid_remove()  # Hide the upload progress bar
+
+
+# --- Load last used configuration and pre-fill fields ---
+def load_last_used_config():
+    config_files = glob.glob(os.path.join(CONFIG_DIR, "config_*.json"))
+    if not config_files:
+        return
+
+    # Sort files by the number in their name
+    def extract_number(f):
+        m = re.search(r"config_(\d+)\.json$", f)
+        return int(m.group(1)) if m else 0
+
+    config_files.sort(key=extract_number)
+    last_config = config_files[-1]
+    config = load_config(last_config)
+    if config:
+        username_entry.delete(0, tk.END)
+        username_entry.insert(0, config.get("username", ""))
+        ip_entry.delete(0, tk.END)
+        ip_entry.insert(0, config.get("ip_address", ""))
+        key_file_entry.delete(0, tk.END)
+        key_file_entry.insert(0, config.get("key_path", ""))
+
+
+load_last_used_config()
 
 # Run the application
 root.mainloop()
