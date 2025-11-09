@@ -9,6 +9,7 @@ Author: SSH GUI Team
 Version: 2.0
 """
 
+from sys import platform
 import tkinter as tk
 from src.visuals import SSHGuiApp
 
@@ -20,8 +21,19 @@ def main():
     """
     root = tk.Tk()
     _app = SSHGuiApp(root)
-    root.mainloop()
 
+    # Fix for macOS and Linux: Force window to front and give it focus
+    if platform in ["darwin", "linux"]:
+        root.lift()
+        root.attributes('-topmost', True)
+        root.after(100, lambda: root.attributes('-topmost', False))
+        root.focus_force()
+    else:
+        raise NotImplementedError(
+            f"This application currently supports only macOS and Linux platforms. Detected: {platform}"
+        )
+
+    root.mainloop()
 
 if __name__ == "__main__":
     main()

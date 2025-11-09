@@ -2,6 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import os
 import subprocess
+import logging
+
+# Get logger
+logger = logging.getLogger(__name__)
 
 
 def format_size(size_in_bytes):
@@ -57,6 +61,10 @@ class RemoteFileBrowser:
             ssh_command (str): The SSH command to connect to the remote server.
             on_select_callback (function): Callback function when a file or directory is selected.
         """
+        logger.info("=" * 60)
+        logger.info("Remote File Browser initialized")
+        logger.debug(f"SSH command: {ssh_command}")
+
         self.master = master
         self.ssh_command = ssh_command
         self.on_select_callback = on_select_callback
@@ -112,8 +120,12 @@ class RemoteFileBrowser:
         """
         selected_path = self.get_selected_path()
         if selected_path:
+            logger.info(f"Item selected: {selected_path}")
             self.on_select_callback(selected_path)
             self.master.destroy()
+            logger.info("Remote File Browser closed")
+        else:
+            logger.warning("No item selected")
 
     def execute_command(self, command):
         """
@@ -125,8 +137,13 @@ class RemoteFileBrowser:
         Returns:
             str: The standard output of the executed command.
         """
-        full_command = f"{self.ssh_command} '{command}'"
+        full_command = f"{self.ssh_command} -o StrictHostKeyChecking=no '{command}'"
+        logger.debug(f"Executing remote command: {command}")
+        logger.debug(f"Full SSH command: {full_command}")
         result = subprocess.run(full_command, capture_output=True, text=True, shell=True)
+        logger.debug(f"Command exit code: {result.returncode}")
+        if result.returncode != 0 and result.stderr:
+            logger.warning(f"Command stderr: {result.stderr}")
         return result.stdout
 
     def refresh(self):
@@ -134,12 +151,30 @@ class RemoteFileBrowser:
         Refresh the file and directory listing in the treeview.
         Fetches the list of files and directories in the current remote path.
         """
+        logger.info(f"Refreshing directory listing for: {self.current_path}")
         # Clear the current tree items
         self.tree.delete(*self.tree.get_children())
 
         # Execute 'ls -la' command on the remote server
         ls_output = self.execute_command(f'ls -la "{self.current_path}"')
-        lines = ls_output.split('\n')[1:]  # Skip the first line (total)
+
+        # Check if we got valid output
+        if not ls_output or ls_output.strip() == "":
+            # Insert an error message in the tree
+            logger.error(f"No output from server for path: {self.current_path}")
+            self.tree.insert("", "end", text="Error: No output from server", values=("Error", "", ""))
+            return
+
+        lines = ls_output.split('\n')
+
+        # Check if we have at least some content
+        if len(lines) < 2:
+            logger.error(f"Unable to list directory: {self.current_path}")
+            self.tree.insert("", "end", text="Error: Unable to list directory", values=("Error", "", ""))
+            return
+
+        lines = lines[1:]  # Skip the first line (total)
+        logger.debug(f"Found {len(lines)} items in directory")
 
         for line in lines:
             if line.strip():
@@ -158,7 +193,10 @@ class RemoteFileBrowser:
                     else:
                         item_type = "File"
                         # Convert the size to human-readable format
-                        size = format_size(int(size))  # Display size only for files
+                        try:
+                            size = format_size(int(size))  # Display size only for files
+                        except (ValueError, TypeError):
+                            size = ""  # If conversion fails, leave blank
 
                     self.tree.insert("", "end", text=name, values=(item_type, permissions, size))
 
@@ -173,9 +211,11 @@ class RemoteFileBrowser:
         item = self.tree.selection()[0]
         item_type = self.tree.item(item, "values")[0]
         name = self.tree.item(item, "text")
+        logger.debug(f"Double-clicked on: {name} (type: {item_type})")
 
         if item_type == "Directory":
             new_path = os.path.join(self.current_path, name).replace("\\", "/")
+            logger.info(f"Navigating to directory: {new_path}")
             self.navigate_to(new_path)
 
     def navigate_to(self, path):
@@ -185,6 +225,7 @@ class RemoteFileBrowser:
         Args:
             path (str): The path to navigate to.
         """
+        logger.info(f"Navigating to: {path}")
         self.forward_history.clear()  # Clear forward history when navigating to a new path
         self.current_path = path
         self.path_var.set(self.current_path)
@@ -197,10 +238,13 @@ class RemoteFileBrowser:
         """
         parent_path = os.path.dirname(self.current_path)
         if parent_path != self.current_path:  # Check if not at root
+            logger.info(f"Going up from {self.current_path} to {parent_path}")
             self.forward_history.append(self.current_path)
             self.current_path = parent_path
             self.path_var.set(self.current_path)
             self.refresh()
+        else:
+            logger.debug("Already at root directory")
 
     def go_forward(self):
         """
@@ -208,9 +252,12 @@ class RemoteFileBrowser:
         """
         if self.forward_history:
             next_path = self.forward_history.pop()
+            logger.info(f"Going forward to: {next_path}")
             self.current_path = next_path
             self.path_var.set(self.current_path)
             self.refresh()
+        else:
+            logger.debug("No forward history available")
 
     def get_selected_path(self):
         """

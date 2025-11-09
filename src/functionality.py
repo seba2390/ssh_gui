@@ -18,20 +18,85 @@ License: MIT
 
 import glob
 import json
+import logging
 import os
 import platform
 import re
+import shlex
 import subprocess
 import time
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Callable
 from tkinter import messagebox
 
 # Constants for configuration directory and default configuration file
-CONFIG_DIR = "configurations"
+# Use absolute paths based on the module location to ensure logs are always in the project directory
+_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_MODULE_DIR)
+CONFIG_DIR = os.path.join(_PROJECT_ROOT, "configurations")
 DEFAULT_CONFIG_FILE = "config.json"
+LOGS_DIR = os.path.join(_PROJECT_ROOT, ".logs")
 
-# Ensure the configurations directory exists
+# Ensure the configurations and logs directories exist
 os.makedirs(CONFIG_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Configure logging
+log_filename = os.path.join(LOGS_DIR, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+
+# Create file handler with immediate flushing
+file_handler = logging.FileHandler(log_filename)
+file_handler.setLevel(logging.DEBUG)
+file_handler.flush = lambda: file_handler.stream.flush() if file_handler.stream else None
+
+# Create console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+
+# Create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Configure root logger
+logging.basicConfig(
+    level=logging.DEBUG,
+    handlers=[file_handler, console_handler],
+    force=True  # Force reconfiguration if already configured
+)
+
+# Ensure all log records are flushed immediately
+logging.root.handlers[0].flush()
+
+logger = logging.getLogger(__name__)
+
+logger.info("="*80)
+logger.info("SSH GUI Application Started")
+logger.info(f"Log file: {log_filename}")
+logger.info(f"Platform: {platform.system()} {platform.release()}")
+logger.info(f"Python version: {platform.python_version()}")
+logger.info("="*80)
+
+
+def schedule_gui_update(widget: object, update_func: Callable) -> None:
+    """
+    Schedule a GUI update to run on the main thread.
+
+    This function ensures thread-safe GUI updates by scheduling them on the main
+    event loop using the widget's after() method. This prevents freezing and crashes
+    that occur when updating Tkinter widgets from worker threads.
+
+    Args:
+        widget: Any Tkinter widget (used to access the main event loop)
+        update_func: Callable function that performs the GUI update
+
+    Example:
+        >>> schedule_gui_update(label, lambda: label.config(text="Updated"))
+    """
+    try:
+        widget.after(0, update_func)
+    except Exception as e:
+        logger.error(f"Error scheduling GUI update: {e}")
 
 
 def truncate_filename(filename: str, max_length: int) -> str:
@@ -53,11 +118,14 @@ def truncate_filename(filename: str, max_length: int) -> str:
         >>> truncate_filename("very_long_filename_example.txt", 20)
         "very_lon…mple.txt"
     """
+    logger.debug(f"Truncating filename: '{filename}' to max_length: {max_length}")
     if len(filename) <= max_length:
         return filename
     # Calculate how many characters to keep from each end
     part = (max_length - 3) // 2
-    return f"{filename[:part]}…{filename[-part:]}"
+    result = f"{filename[:part]}…{filename[-part:]}"
+    logger.debug(f"Truncated result: '{result}'")
+    return result
 
 
 def load_config(file_path: str) -> Optional[dict[str, str]]:
@@ -86,10 +154,23 @@ def load_config(file_path: str) -> Optional[dict[str, str]]:
         >>> if config:
         >>>     print(config['username'])
     """
-    if os.path.exists(file_path):
-        with open(file_path, "r") as file:
-            return json.load(file)
-    return None
+    logger.info(f"Loading config from: {file_path}")
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "r") as file:
+                config = json.load(file)
+                logger.info(f"Config loaded successfully: {list(config.keys())}")
+                logger.debug(f"Config details: username={config.get('username')}, ip={config.get('ip_address')}, port={config.get('port')}")
+                return config
+        else:
+            logger.warning(f"Config file does not exist: {file_path}")
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error loading config from {file_path}: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error loading config from {file_path}: {e}", exc_info=True)
+        return None
 
 
 def save_config(username: str, ip_address: str, key_path: str, port: str) -> None:
@@ -118,6 +199,9 @@ def save_config(username: str, ip_address: str, key_path: str, port: str) -> Non
         >>> save_config("ubuntu", "192.168.1.100", "~/.ssh/id_rsa", "22")
         # Creates config_1.json if config differs from existing files
     """
+    logger.info(f"Saving config: username={username}, ip={ip_address}, port={port}")
+    logger.debug(f"Key path: {key_path}")
+
     config_data = {"username": username, "ip_address": ip_address, "key_path": key_path, "port": port}
 
     # Check all existing config files in the configurations directory
@@ -128,6 +212,7 @@ def save_config(username: str, ip_address: str, key_path: str, port: str) -> Non
 
             # If a matching configuration is found, do not create a new file
             if existing_config == config_data:
+                logger.info(f"Matching config found in {filename}, not creating duplicate")
                 return
 
     # No matching config found, so create a new unique configuration file
@@ -142,9 +227,16 @@ def save_config(username: str, ip_address: str, key_path: str, port: str) -> Non
         new_file_name = f"{base_name}_{counter}{ext}"
         new_file_path = os.path.join(CONFIG_DIR, new_file_name)
 
+    logger.info(f"Creating new config file: {new_file_path}")
+
     # Save the new configuration data to the new file
-    with open(new_file_path, "w") as file:
-        json.dump(config_data, file, indent=2)
+    try:
+        with open(new_file_path, "w") as file:
+            json.dump(config_data, file, indent=2)
+        logger.info(f"Config saved successfully to {new_file_path}")
+    except Exception as e:
+        logger.error(f"Failed to save config to {new_file_path}: {e}", exc_info=True)
+        raise
 
 
 def test_ssh_connection(username: str, ip_address: str, key_path: str, port: str) -> tuple[bool, str]:
@@ -174,16 +266,24 @@ def test_ssh_connection(username: str, ip_address: str, key_path: str, port: str
         >>> if success:
         >>>     print("Connected successfully!")
     """
+    logger.info(f"Testing SSH connection to {username}@{ip_address}:{port}")
+
     if not all([username, ip_address, key_path, port]):
+        logger.warning("Missing required fields for SSH connection test")
         return False, "Please fill in all fields"
 
     # Construct SSH command that immediately exits after successful connection
     ssh_command = f"ssh -i {key_path} -p {port} -o StrictHostKeyChecking=no {username}@{ip_address} exit"
+    logger.debug(f"SSH test command: {ssh_command}")
+
     result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    logger.debug(f"SSH test return code: {result.returncode}")
 
     if result.returncode == 0:
+        logger.info("SSH connection test successful")
         return True, "Connection successful!"
     else:
+        logger.error(f"SSH connection test failed: {result.stderr}")
         return False, f"Connection failed: {result.stderr}"
 
 
@@ -404,7 +504,7 @@ def run_rsync_command(
         ... )
     """
     # Initialize progress tracking
-    progress_bar["value"] = 0
+    schedule_gui_update(progress_bar, lambda: progress_bar.__setitem__("value", 0))
     is_directory = False
 
     # Variables for ETA calculation
@@ -420,18 +520,25 @@ def run_rsync_command(
 
     # Update status label based on source type
     if is_directory:
-        status_label.config(text=f"{direction.capitalize()} in progress... (Folder)")
+        schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} in progress... (Folder)"))
     else:
-        status_label.config(text=f"{direction.capitalize()} in progress...")
+        schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} in progress..."))
 
     # Construct rsync command based on transfer direction
+    # Use -azP flags like the old working version for compatibility
+    # Properly quote paths to handle spaces and special characters
     if direction == "download":
-        command = f"rsync -azP -e 'ssh -i {key_path} -p {port}' {username}@{ip_address}:{src_path} {dest_path}"
+        command = f"rsync -azP -e 'ssh -i {shlex.quote(key_path)} -p {port} -o StrictHostKeyChecking=no' {username}@{ip_address}:{shlex.quote(src_path)} {shlex.quote(dest_path)}"
     else:  # upload
-        command = f"rsync -azP -e 'ssh -i {key_path} -p {port}' {src_path} {username}@{ip_address}:{dest_path}"
+        command = f"rsync -azP -e 'ssh -i {shlex.quote(key_path)} -p {port} -o StrictHostKeyChecking=no' {shlex.quote(src_path)} {username}@{ip_address}:{shlex.quote(dest_path)}"
+
+    logger.info(f"Starting rsync {direction}: {src_path} -> {dest_path}")
+    logger.debug(f"Rsync command: {command}")
+    logger.info(f"Transfer type: {'Directory' if is_directory else 'File'}")
 
     # Start rsync process and capture output
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, text=True, bufsize=1)
+    logger.debug(f"Rsync process started with PID: {process.pid}")
     progress_regex = re.compile(r"(\d+)\%")
 
     # Process rsync output line by line
@@ -441,6 +548,12 @@ def run_rsync_command(
         output = process.stdout.readline()
         if output == "" and process.poll() is not None:
             break
+
+        if not output:
+            continue
+
+        # Log rsync output
+        logger.debug(f"RSYNC OUTPUT: {output.rstrip()}")
 
         # Detect and display current filename being transferred
         if (
@@ -452,8 +565,7 @@ def run_rsync_command(
         ):
             current_file = output.strip()
             truncated = truncate_filename(current_file, int(filename_label.cget("width")))
-            filename_label.config(text=truncated)
-            filename_label.update()
+            schedule_gui_update(filename_label, lambda: filename_label.config(text=truncated))
 
         current_progress = 0
 
@@ -463,8 +575,9 @@ def run_rsync_command(
             if match:
                 percent = int(match.group(1))
                 current_progress = percent
-                progress_bar["value"] = percent
-                status_label.config(text=f"{direction.capitalize()} in progress... {percent}%")
+                # Thread-safe GUI updates
+                schedule_gui_update(progress_bar, lambda p=percent: progress_bar.__setitem__("value", p))
+                schedule_gui_update(status_label, lambda p=percent: status_label.config(text=f"{direction.capitalize()} in progress... {p}%"))
         else:
             # For directories, calculate progress from file count
             if "to-check" in output:
@@ -474,15 +587,14 @@ def run_rsync_command(
                     total = int(m.group(2))
                     percent = int((checked / total) * 100)
                     current_progress = percent
-                    progress_bar["value"] = percent
-            progress_bar.update()
+                    schedule_gui_update(progress_bar, lambda p=percent: progress_bar.__setitem__("value", p))
+                    schedule_gui_update(status_label, lambda p=percent: status_label.config(text=f"{direction.capitalize()} in progress... {p}%"))
 
         # Parse and display transfer speed from rsync output
         speed_match = re.search(r"([0-9.]+[KMG]?B/s)", output)
         if speed_match and speed_label:
             speed = speed_match.group(1)
-            speed_label.config(text=f"{speed}")
-            speed_label.update()
+            schedule_gui_update(speed_label, lambda s=speed: speed_label.config(text=f"{s}"))
 
         # Calculate and display ETA based on overall progress
         if current_progress > last_progress and current_progress > 0:
@@ -500,16 +612,24 @@ def run_rsync_command(
                     eta_str = f"{hours:01d}:{minutes:02d}:{seconds:02d}"
 
                     if eta_label:
-                        eta_label.config(text=f"ETA: {eta_str}")
-                        eta_label.update()
+                        schedule_gui_update(eta_label, lambda e=eta_str: eta_label.config(text=f"ETA: {e}"))
 
             last_progress = current_progress
             last_time = current_time
 
     # Wait for process completion and update final status
-    process.wait()
-    progress_bar["value"] = 100
-    status_label.config(text=f"{direction.capitalize()} Complete!")
+    return_code = process.wait()
+    logger.info(f"Rsync process completed with return code: {return_code}")
+
+    if return_code == 0:
+        schedule_gui_update(progress_bar, lambda: progress_bar.__setitem__("value", 100))
+        schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Complete!"))
+        logger.info(f"{direction.capitalize()} transfer completed successfully")
+    else:
+        error_msg = f"rsync failed with exit code {return_code}"
+        logger.error(f"{error_msg}\nCommand: {command}")
+        schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Failed! (Exit code: {return_code})"))
+        messagebox.showerror("Transfer Error", f"{error_msg}\nCommand: {command}")
 
 
 def load_last_used_config() -> Optional[dict[str, str]]:

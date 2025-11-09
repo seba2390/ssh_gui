@@ -5,6 +5,7 @@ This module contains all the GUI components and visual elements for the SSH GUI 
 Handles window creation, widget layout, styling, and user interface components.
 """
 
+import logging
 import os
 import platform
 import threading
@@ -23,6 +24,9 @@ from src.functionality import (
 )
 from src.remote_file_browser import RemoteFileBrowser
 
+# Get logger from functionality module
+logger = logging.getLogger(__name__)
+
 
 class SSHGuiApp:
     """Main SSH GUI Application class containing all visual elements and event handlers."""
@@ -34,12 +38,16 @@ class SSHGuiApp:
         Args:
             root: The Tkinter root window
         """
+        logger.info("=" * 80)
+        logger.info("SSH GUI Application window initializing")
+
         self.root = root
         self.root.title("SSH Connect Pro")
 
         # Window dimensions
         self.window_width = 700
         self.window_height = 480
+        logger.debug(f"Window dimensions: {self.window_width}x{self.window_height}")
 
         # Define color scheme
         self.BG_COLOR = "#1a1d29"
@@ -81,14 +89,19 @@ class SSHGuiApp:
         self.root.grid_rowconfigure(0, weight=1)
 
         # Create GUI components
+        logger.info("Creating GUI components...")
         self.create_connection_frame()
         self.create_transfer_frame()
+        logger.info("GUI components created successfully")
 
         # Load last used configuration
         self.load_last_config()
 
         # Apply platform-specific window focus fix
         self.apply_window_focus_fix()
+
+        logger.info("SSH GUI Application window fully initialized and ready")
+        logger.info("=" * 80)
 
     def create_connection_frame(self):
         """Create the connection settings frame with all input fields and buttons."""
@@ -349,54 +362,87 @@ class SSHGuiApp:
     # Event handlers
     def test_connection(self):
         """Test SSH connection."""
-        success, message = test_ssh_connection(
-            self.username_entry.get(),
-            self.ip_entry.get(),
-            self.key_file_entry.get(),
-            self.port_entry.get()
-        )
+        logger.info("=" * 60)
+        logger.info("TEST CONNECTION button pressed")
+        username = self.username_entry.get()
+        ip_address = self.ip_entry.get()
+        key_path = self.key_file_entry.get()
+        port = self.port_entry.get()
+        logger.info(f"Parameters: username={username}, ip={ip_address}, port={port}")
+        logger.debug(f"Key path: {key_path}")
+
+        success, message = test_ssh_connection(username, ip_address, key_path, port)
+
         if success:
+            logger.info(f"Connection test successful: {message}")
             messagebox.showinfo("Connection Test", message)
         else:
+            logger.error(f"Connection test failed: {message}")
             messagebox.showerror("Connection Test", message)
+        logger.info("=" * 60)
 
     def check_disk_space(self):
         """Check remote disk space."""
-        success, message, color = check_remote_disk_space(
-            self.username_entry.get(),
-            self.ip_entry.get(),
-            self.key_file_entry.get(),
-            self.port_entry.get()
-        )
+        logger.info("=" * 60)
+        logger.info("CHECK DISK SPACE button pressed")
+        username = self.username_entry.get()
+        ip_address = self.ip_entry.get()
+        key_path = self.key_file_entry.get()
+        port = self.port_entry.get()
+        logger.info(f"Parameters: username={username}, ip={ip_address}, port={port}")
+        logger.debug(f"Key path: {key_path}")
+
+        success, message, color = check_remote_disk_space(username, ip_address, key_path, port)
+
         self.disk_space_label.config(text=message, fg=color)
-        if not success and "Please fill" not in message:
-            messagebox.showerror("Error", message)
+        if success:
+            logger.info(f"Disk space check successful: {message}")
+        else:
+            logger.error(f"Disk space check failed: {message}")
+            if "Please fill" not in message:
+                messagebox.showerror("Error", message)
+        logger.info("=" * 60)
 
     def connect_to_instance(self):
         """Connect to SSH instance via terminal."""
+        logger.info("=" * 60)
+        logger.info("CONNECT button pressed")
         username = self.username_entry.get()
         ip_address = self.ip_entry.get()
         key_path = self.key_file_entry.get()
         port = self.port_entry.get()
         terminal = self.terminal_var.get()
+        logger.info(f"Parameters: username={username}, ip={ip_address}, port={port}, terminal={terminal}")
+        logger.debug(f"Key path: {key_path}")
 
         if username and ip_address and key_path and port and terminal:
+            logger.info("All fields filled, saving config and opening terminal")
             save_config(username, ip_address, key_path, port)
             thread = threading.Thread(target=open_ssh_terminal, args=(key_path, username, ip_address, port, terminal))
             thread.start()
+            logger.info("Terminal thread started")
         else:
+            logger.warning("Missing required fields for connection")
             messagebox.showerror("Error", "Please fill in all fields and select a terminal")
+        logger.info("=" * 60)
 
     def download_file(self):
         """Start file download from remote server."""
+        logger.info("=" * 60)
+        logger.info("START DOWNLOAD button pressed")
         username = self.username_entry.get()
         ip_address = self.ip_entry.get()
         key_path = self.key_file_entry.get()
         port = self.port_entry.get()
         remote_path = self.remote_file_entry.get()
         local_path = self.local_path_entry.get()
+        logger.info(f"Download parameters: username={username}, ip={ip_address}, port={port}")
+        logger.info(f"Remote path: {remote_path}")
+        logger.info(f"Local destination: {local_path}")
+        logger.debug(f"Key path: {key_path}")
 
         if username and ip_address and key_path and port and remote_path and local_path:
+            logger.info("All fields filled, starting download in background thread")
             self.download_progress.grid()
             self.download_progress["value"] = 0
             self.download_live_file_label.grid()
@@ -413,19 +459,29 @@ class SSHGuiApp:
                 ),
             )
             thread.start()
+            logger.info("Download thread started")
         else:
+            logger.warning("Missing required fields for download")
             messagebox.showerror("Error", "Please fill in all fields for downloading")
+        logger.info("=" * 60)
 
     def upload_file(self):
         """Start file upload to remote server."""
+        logger.info("=" * 60)
+        logger.info("START UPLOAD button pressed")
         username = self.username_entry.get()
         ip_address = self.ip_entry.get()
         key_path = self.key_file_entry.get()
         port = self.port_entry.get()
         local_path = self.local_file_entry.get()
         remote_path = self.remote_path_upload_entry.get()
+        logger.info(f"Upload parameters: username={username}, ip={ip_address}, port={port}")
+        logger.info(f"Local source: {local_path}")
+        logger.info(f"Remote destination: {remote_path}")
+        logger.debug(f"Key path: {key_path}")
 
         if username and ip_address and key_path and port and local_path and remote_path:
+            logger.info("All fields filled, starting upload in background thread")
             self.upload_progress.grid()
             self.upload_progress["value"] = 0
             self.upload_live_file_label.grid()
@@ -442,11 +498,15 @@ class SSHGuiApp:
                 ),
             )
             thread.start()
+            logger.info("Upload thread started")
         else:
+            logger.warning("Missing required fields for upload")
             messagebox.showerror("Error", "Please fill in all fields for uploading")
+        logger.info("=" * 60)
 
     def browse_key_file(self):
         """Open file dialog to select SSH key."""
+        logger.debug("Browse key file button pressed")
         home_dir = os.path.expanduser("~")
         ssh_dir = os.path.join(home_dir, ".ssh")
         initial_dir = ssh_dir if os.path.exists(ssh_dir) else home_dir
@@ -457,18 +517,26 @@ class SSHGuiApp:
             filetypes=(("PEM files", "*.pem"), ("All files", "*.*")),
         )
         if key_path:
+            logger.info(f"Key file selected: {key_path}")
             self.key_file_entry.delete(0, tk.END)
             self.key_file_entry.insert(0, key_path)
+        else:
+            logger.debug("Key file selection cancelled")
 
     def browse_local_path(self):
         """Open directory dialog to select local destination."""
+        logger.debug("Browse local path button pressed")
         local_path = filedialog.askdirectory(title="Select Local Destination")
         if local_path:
+            logger.info(f"Local destination selected: {local_path}")
             self.local_path_entry.delete(0, tk.END)
             self.local_path_entry.insert(0, local_path)
+        else:
+            logger.debug("Local path selection cancelled")
 
     def browse_local_file(self):
         """Show dropdown menu to select file or directory for upload."""
+        logger.debug("Browse local file button pressed - showing menu")
         # Create a styled popup menu that matches the GUI design
         menu = tk.Menu(self.root, tearoff=0,
                       bg=self.ENTRY_BG,
@@ -491,68 +559,87 @@ class SSHGuiApp:
 
     def select_file(self):
         """Open file dialog to select a single file."""
+        logger.debug("Select file option chosen")
         local_path = filedialog.askopenfilename(title="Select File to Upload")
         if local_path:
+            logger.info(f"File selected for upload: {local_path}")
             self.local_file_entry.delete(0, tk.END)
             self.local_file_entry.insert(0, local_path)
+        else:
+            logger.debug("File selection cancelled")
 
     def select_directory(self):
         """Open directory dialog to select a directory."""
+        logger.debug("Select directory option chosen")
         local_directory = filedialog.askdirectory(title="Select Directory to Upload")
         if local_directory:
+            logger.info(f"Directory selected for upload: {local_directory}")
             self.local_file_entry.delete(0, tk.END)
             self.local_file_entry.insert(0, local_directory)
+        else:
+            logger.debug("Directory selection cancelled")
 
     def browse_remote_file(self):
         """Open remote file browser to select remote file."""
+        logger.debug("Browse remote file button pressed")
         username = self.username_entry.get()
         ip_address = self.ip_entry.get()
         key_path = self.key_file_entry.get()
         port = self.port_entry.get()
 
         if username and ip_address and key_path and port:
+            logger.info(f"Opening remote file browser for {username}@{ip_address}:{port}")
             ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address}"
             remote_browser_window = tk.Toplevel(self.root)
             remote_browser_window.title("Select Remote File")
 
             def on_select(path):
+                logger.info(f"Remote file selected: {path}")
                 self.remote_file_entry.delete(0, tk.END)
                 self.remote_file_entry.insert(0, path)
 
             RemoteFileBrowser(remote_browser_window, ssh_command, on_select)
         else:
+            logger.warning("Cannot open remote browser - missing connection fields")
             messagebox.showerror("Error", "Please fill in all connection fields")
 
     def browse_remote_path(self):
         """Open remote file browser to select remote path."""
+        logger.debug("Browse remote path button pressed")
         username = self.username_entry.get()
         ip_address = self.ip_entry.get()
         key_path = self.key_file_entry.get()
         port = self.port_entry.get()
 
         if username and ip_address and key_path and port:
+            logger.info(f"Opening remote path browser for {username}@{ip_address}:{port}")
             ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address}"
             remote_browser_window = tk.Toplevel(self.root)
             remote_browser_window.title("Select Remote Path")
 
             def on_select(path):
+                logger.info(f"Remote path selected: {path}")
                 self.remote_path_upload_entry.delete(0, tk.END)
                 self.remote_path_upload_entry.insert(0, path)
 
             RemoteFileBrowser(remote_browser_window, ssh_command, on_select)
         else:
+            logger.warning("Cannot open remote browser - missing connection fields")
             messagebox.showerror("Error", "Please fill in all connection fields")
 
     def load_config_file(self):
         """Open file dialog to load a saved configuration."""
+        logger.debug("Load config button pressed")
         file_path = filedialog.askopenfilename(
             title="Select Configuration File",
             initialdir=CONFIG_DIR,
             filetypes=(("JSON files", "*.json"), ("All files", "*.*")),
         )
         if file_path:
+            logger.info(f"Loading configuration from: {file_path}")
             config = load_config(file_path)
             if config:
+                logger.info(f"Configuration loaded successfully: username={config.get('username')}, ip={config.get('ip_address')}, port={config.get('port')}")
                 self.username_entry.delete(0, tk.END)
                 self.username_entry.insert(0, config.get("username", ""))
                 self.ip_entry.delete(0, tk.END)
@@ -561,11 +648,17 @@ class SSHGuiApp:
                 self.key_file_entry.insert(0, config.get("key_path", ""))
                 self.port_entry.delete(0, tk.END)
                 self.port_entry.insert(0, config.get("port", "22"))
+            else:
+                logger.error(f"Failed to load configuration from {file_path}")
+        else:
+            logger.debug("Config file selection cancelled")
 
     def load_last_config(self):
         """Load the most recently used configuration."""
+        logger.debug("Loading last used configuration")
         config = load_last_used_config()
         if config:
+            logger.info(f"Last config loaded: username={config.get('username')}, ip={config.get('ip_address')}, port={config.get('port')}")
             self.username_entry.delete(0, tk.END)
             self.username_entry.insert(0, config.get("username", ""))
             self.ip_entry.delete(0, tk.END)
@@ -574,6 +667,8 @@ class SSHGuiApp:
             self.key_file_entry.insert(0, config.get("key_path", ""))
             self.port_entry.delete(0, tk.END)
             self.port_entry.insert(0, config.get("port", "22"))
+        else:
+            logger.debug("No previous configuration found")
 
     def apply_window_focus_fix(self):
         """Apply platform-specific window focus fix for macOS and Linux."""
