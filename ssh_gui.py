@@ -742,9 +742,24 @@ browse_button = tk.Button(connect_frame, text="...", command=browse_key_file, bg
                          activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
 browse_button.grid(row=7, column=2, padx=(6, 0), pady=(0, 10))
 
+# Buttons with modern styling
+button_style = {
+    "font": BUTTON_FONT,
+    "relief": "flat",
+    "bd": 0,
+    "cursor": "hand2",
+    "pady": 4
+}
+
+# Load Config Button (placed after SSH key)
+load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file,
+                              bg=BORDER_COLOR, fg=BG_COLOR, activebackground="#4a4d5e",
+                              activeforeground=BG_COLOR, **button_style)
+load_config_button.grid(row=8, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=2)
+
 # Terminal
 tk.Label(connect_frame, text="Terminal", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
-    row=8, column=0, sticky="w", pady=(0, 4)
+    row=9, column=0, sticky="w", pady=(0, 4)
 )
 current_os = platform.system()
 if current_os == "Darwin":
@@ -758,41 +773,27 @@ terminal_combobox = ttk.Combobox(connect_frame, textvariable=terminal_var, state
 terminal_combobox["values"] = terminal_options
 if terminal_options:
     terminal_var.set(terminal_options[0])
-terminal_combobox.grid(row=9, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=4)
-
-# Buttons with modern styling
-button_style = {
-    "font": BUTTON_FONT,
-    "relief": "flat",
-    "bd": 0,
-    "cursor": "hand2",
-    "pady": 8
-}
+terminal_combobox.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=4)
 
 connect_button = tk.Button(connect_frame, text="Connect", command=connect_to_instance,
                           bg=PRIMARY_COLOR, fg=BG_COLOR, activebackground=PRIMARY_HOVER,
                           activeforeground=BG_COLOR, **button_style)
-connect_button.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+connect_button.grid(row=11, column=0, sticky="ew", pady=(0, 6), padx=(0, 3), ipady=2)
 
 test_connection_button = tk.Button(connect_frame, text="Test Connection", command=test_connection,
                                   bg=SUCCESS_COLOR, fg=BG_COLOR, activebackground="#00e67a",
                                   activeforeground=BG_COLOR, **button_style)
-test_connection_button.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+test_connection_button.grid(row=11, column=1, columnspan=2, sticky="ew", pady=(0, 6), padx=(3, 0), ipady=2)
 
 check_disk_button = tk.Button(connect_frame, text="Check Disk Space", command=check_disk_space,
-                             bg=ACCENT_COLOR, fg="white", activebackground="#6950e6",
-                             activeforeground="white", **button_style)
-check_disk_button.grid(row=12, column=0, columnspan=3, sticky="ew", pady=(0, 6))
-
-load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file,
-                              bg=BORDER_COLOR, fg=TEXT_COLOR, activebackground="#4a4d5e",
-                              activeforeground=TEXT_COLOR, **button_style)
-load_config_button.grid(row=13, column=0, columnspan=3, sticky="ew")
+                             bg=ACCENT_COLOR, fg=BG_COLOR, activebackground="#6950e6",
+                             activeforeground=BG_COLOR, **button_style)
+check_disk_button.grid(row=12, column=0, columnspan=3, sticky="ew", pady=(0, 6), ipady=2)
 
 # Disk space label
 disk_space_label = tk.Label(connect_frame, text="", font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8),
                            bg=FRAME_BG, fg=LABEL_COLOR, wraplength=280, justify="center")
-disk_space_label.grid(row=14, column=0, columnspan=3, pady=(10, 0))
+disk_space_label.grid(row=13, column=0, columnspan=3, pady=(10, 0))
 
 connect_frame.grid_columnconfigure(0, weight=1)
 
