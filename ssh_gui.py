@@ -45,7 +45,7 @@ def load_config(file_path):
     return None
 
 
-def save_config(username, ip_address, key_path):
+def save_config(username, ip_address, key_path, port):
     """
     Save configuration details to a JSON file.
     If an identical configuration already exists in any of the existing files, no new file is created.
@@ -54,8 +54,9 @@ def save_config(username, ip_address, key_path):
         username (str): The SSH username.
         ip_address (str): The IP address of the remote server.
         key_path (str): The path to the SSH key file.
+        port (str): The SSH port number.
     """
-    config_data = {"username": username, "ip_address": ip_address, "key_path": key_path}
+    config_data = {"username": username, "ip_address": ip_address, "key_path": key_path, "port": port}
 
     # Check all existing config files in the configurations directory
     for filename in os.listdir(CONFIG_DIR):
@@ -91,10 +92,11 @@ def test_connection():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
+    port = port_entry.get()
 
-    if username and ip_address and key_path:
+    if username and ip_address and key_path and port:
         # SSH command to test connection (we use 'exit' to immediately close the connection after success)
-        ssh_command = f"ssh -i {key_path} -o StrictHostKeyChecking=no {username}@{ip_address} exit"
+        ssh_command = f"ssh -i {key_path} -p {port} -o StrictHostKeyChecking=no {username}@{ip_address} exit"
         result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         if result.returncode == 0:
@@ -105,7 +107,45 @@ def test_connection():
         messagebox.showerror("Error", "Please fill in all fields")
 
 
-def is_remote_directory(key_path, username, ip_address, remote_path):
+def check_disk_space():
+    """
+    Check the available disk space on the remote server and display it in the GUI.
+    """
+    username = username_entry.get()
+    ip_address = ip_entry.get()
+    key_path = key_file_entry.get()
+    port = port_entry.get()
+
+    if username and ip_address and key_path and port:
+        # SSH command to get disk space information (using df -h for human-readable format)
+        ssh_command = f"ssh -i {key_path} -p {port} -o StrictHostKeyChecking=no {username}@{ip_address} 'df -h /'"
+        result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if result.returncode == 0:
+            # Parse the output to extract disk space information
+            lines = result.stdout.strip().split('\n')
+            if len(lines) >= 2:
+                # The second line contains the disk space info
+                parts = lines[1].split()
+                if len(parts) >= 5:
+                    size = parts[1]
+                    used = parts[2]
+                    available = parts[3]
+                    use_percent = parts[4]
+
+                    disk_info = f"Total: {size} | Used: {used} ({use_percent}) | Available: {available}"
+                    disk_space_label.config(text=disk_info, fg="green")
+                else:
+                    disk_space_label.config(text="Could not parse disk space info", fg="red")
+            else:
+                disk_space_label.config(text="Could not retrieve disk space info", fg="red")
+        else:
+            disk_space_label.config(text=f"Error: {result.stderr}", fg="red")
+    else:
+        messagebox.showerror("Error", "Please fill in all connection fields")
+
+
+def is_remote_directory(key_path, username, ip_address, remote_path, port):
     """
     Check if the remote path is a directory using SSH.
 
@@ -114,12 +154,13 @@ def is_remote_directory(key_path, username, ip_address, remote_path):
         username (str): SSH username.
         ip_address (str): IP address of the remote server.
         remote_path (str): Path on the remote server.
+        port (str): SSH port number.
 
     Returns:
         bool: True if the remote path is a directory, False if it's a file.
     """
     # Prepare the SSH command to check if the path is a directory
-    ssh_command = f"ssh -i {key_path} {username}@{ip_address} 'test -d {remote_path} && echo directory || echo file'"
+    ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address} 'test -d {remote_path} && echo directory || echo file'"
 
     # Run the command and capture output
     result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -154,21 +195,22 @@ def connect_to_instance():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
+    port = port_entry.get()
     terminal = terminal_var.get()  # Get the selected terminal from the dropdown
 
-    if username and ip_address and key_path and terminal:
+    if username and ip_address and key_path and port and terminal:
         # Save the configuration details to a JSON file
-        save_config(username, ip_address, key_path)
+        save_config(username, ip_address, key_path, port)
 
         # Start a new thread to open the selected terminal and SSH into the instance
-        thread = threading.Thread(target=open_new_terminal_and_ssh, args=(key_path, username, ip_address, terminal))
+        thread = threading.Thread(target=open_new_terminal_and_ssh, args=(key_path, username, ip_address, port, terminal))
         thread.start()
     else:
         # Show an error if any field is missing or no terminal is selected
         messagebox.showerror("Error", "Please fill in all fields and select a terminal")
 
 
-def open_new_terminal_and_ssh(key_path, username, ip_address, terminal_type):
+def open_new_terminal_and_ssh(key_path, username, ip_address, port, terminal_type):
     """
     Open a new terminal window and initiate an SSH session using the specified terminal emulator.
 
@@ -188,10 +230,12 @@ def open_new_terminal_and_ssh(key_path, username, ip_address, terminal_type):
         key_path (str): The path to the SSH private key file used for authentication.
         username (str): The SSH username to connect as on the remote server.
         ip_address (str): The IP address of the remote server to connect to.
+        port (str): The SSH port number.
         terminal_type (str): The type of terminal emulator to use ("Standard" or "Warp" on macOS).
 
     SSH Command Options:
         -i {key_path}: Specifies the private SSH key file for authentication.
+        -p {port}: Specifies the SSH port number.
         -o StrictHostKeyChecking=no: Disables host key checking to avoid prompts.
         -o ServerAliveInterval=60: Sends keep-alive messages every 60 seconds to prevent timeouts.
         -o ServerAliveCountMax=2: Disconnects if no response after two keep-alive messages.
@@ -202,7 +246,7 @@ def open_new_terminal_and_ssh(key_path, username, ip_address, terminal_type):
         Ensure Warp is installed at `/Applications/Warp.app` and the script has execute permissions (`chmod +x src/run_in_warp.sh`).
     """
     # Construct the SSH command with keep-alive options to prevent idle timeout
-    ssh_command = f"ssh -i {key_path} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=2 {username}@{ip_address}"
+    ssh_command = f"ssh -i {key_path} -p {port} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=2 {username}@{ip_address}"
 
     # Determine the current operating system
     current_os = platform.system()
@@ -248,10 +292,11 @@ def download_file():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
+    port = port_entry.get()
     remote_path = remote_file_entry.get()
     local_path = local_path_entry.get()
 
-    if username and ip_address and key_path and remote_path and local_path:
+    if username and ip_address and key_path and port and remote_path and local_path:
         # Show the progress bar and reset its value
         download_progress.grid()
         download_progress["value"] = 0
@@ -268,6 +313,7 @@ def download_file():
                 key_path,
                 username,
                 ip_address,
+                port,
                 remote_path,
                 local_path,
                 "download",
@@ -291,10 +337,11 @@ def upload_file():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
+    port = port_entry.get()
     local_path = local_file_entry.get()
     remote_path = remote_path_upload_entry.get()
 
-    if username and ip_address and key_path and local_path and remote_path:
+    if username and ip_address and key_path and port and local_path and remote_path:
         # Show the progress bar and reset its value
         upload_progress.grid()
         upload_progress["value"] = 0
@@ -311,6 +358,7 @@ def upload_file():
                 key_path,
                 username,
                 ip_address,
+                port,
                 local_path,
                 remote_path,
                 "upload",
@@ -333,6 +381,7 @@ def run_rsync_command(
     key_path,
     username,
     ip_address,
+    port,
     src_path,
     dest_path,
     direction,
@@ -357,7 +406,7 @@ def run_rsync_command(
 
     # Determine if the source is a directory by checking with SSH for downloads or local check for uploads
     if direction == "download":
-        is_directory = is_remote_directory(key_path, username, ip_address, src_path)
+        is_directory = is_remote_directory(key_path, username, ip_address, src_path, port)
     elif direction == "upload":
         is_directory = os.path.isdir(src_path)
 
@@ -369,9 +418,9 @@ def run_rsync_command(
 
     # Construct the rsync command based on the direction
     if direction == "download":
-        command = f"rsync -azP -e 'ssh -i {key_path}' {username}@{ip_address}:{src_path} {dest_path}"
+        command = f"rsync -azP -e 'ssh -i {key_path} -p {port}' {username}@{ip_address}:{src_path} {dest_path}"
     else:  # upload
-        command = f"rsync -azP -e 'ssh -i {key_path}' {src_path} {username}@{ip_address}:{dest_path}"
+        command = f"rsync -azP -e 'ssh -i {key_path} -p {port}' {src_path} {username}@{ip_address}:{dest_path}"
 
     # Open the subprocess and capture real-time output
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
@@ -541,8 +590,9 @@ def browse_remote_file():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
-    if username and ip_address and key_path:
-        ssh_command = f"ssh -i {key_path} {username}@{ip_address}"
+    port = port_entry.get()
+    if username and ip_address and key_path and port:
+        ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address}"
         remote_browser_window = tk.Toplevel(root)
         remote_browser_window.title("Select Remote File")
 
@@ -562,8 +612,9 @@ def browse_remote_path():
     username = username_entry.get()
     ip_address = ip_entry.get()
     key_path = key_file_entry.get()
-    if username and ip_address and key_path:
-        ssh_command = f"ssh -i {key_path} {username}@{ip_address}"
+    port = port_entry.get()
+    if username and ip_address and key_path and port:
+        ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address}"
         remote_browser_window = tk.Toplevel(root)
         remote_browser_window.title("Select Remote Path")
 
@@ -579,7 +630,7 @@ def browse_remote_path():
 def load_config_file():
     """
     Open a file dialog to load a previously saved configuration from a JSON file.
-    Populates the fields (username, IP address, key path) with the loaded data.
+    Populates the fields (username, IP address, key path, port) with the loaded data.
     """
     file_path = filedialog.askopenfilename(
         title="Select Configuration File",
@@ -595,6 +646,8 @@ def load_config_file():
             ip_entry.insert(0, config.get("ip_address", ""))
             key_file_entry.delete(0, tk.END)
             key_file_entry.insert(0, config.get("key_path", ""))
+            port_entry.delete(0, tk.END)
+            port_entry.insert(0, config.get("port", "22"))
 
 
 # GUI setup
@@ -618,18 +671,30 @@ tk.Label(connect_frame, text="IP Address:").grid(row=1, column=0, sticky="w")
 ip_entry = tk.Entry(connect_frame)
 ip_entry.grid(row=1, column=1)
 
-tk.Label(connect_frame, text="SSH Key File:").grid(row=2, column=0, sticky="w")
+tk.Label(connect_frame, text="Port:").grid(row=2, column=0, sticky="w")
+port_entry = tk.Entry(connect_frame)
+port_entry.insert(0, "22")  # Default SSH port
+port_entry.grid(row=2, column=1)
+
+tk.Label(connect_frame, text="SSH Key File:").grid(row=3, column=0, sticky="w")
 key_file_entry = tk.Entry(connect_frame)
-key_file_entry.grid(row=2, column=1)
+key_file_entry.grid(row=3, column=1)
 browse_button = tk.Button(connect_frame, text="Browse", command=browse_key_file)
-browse_button.grid(row=2, column=2, padx=5)
+browse_button.grid(row=3, column=2, padx=5)
 
 connect_button = tk.Button(connect_frame, text="Connect", command=connect_to_instance)
-connect_button.grid(row=3, column=0, columnspan=3, pady=10)
+connect_button.grid(row=4, column=0, columnspan=3, pady=10)
 load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file)
-load_config_button.grid(row=4, column=0, columnspan=3, pady=10)
+load_config_button.grid(row=5, column=0, columnspan=3, pady=10)
 test_connection_button = tk.Button(connect_frame, text="Test Connection", command=test_connection)
-test_connection_button.grid(row=5, column=0, columnspan=3, pady=10)
+test_connection_button.grid(row=6, column=0, columnspan=3, pady=10)
+
+# Disk space check button and label
+check_disk_button = tk.Button(connect_frame, text="Check Disk Space", command=check_disk_space)
+check_disk_button.grid(row=8, column=0, columnspan=3, pady=10)
+
+disk_space_label = tk.Label(connect_frame, text="", font=("TkDefaultFont", 9), wraplength=250)
+disk_space_label.grid(row=9, column=0, columnspan=3, pady=5)
 
 current_os = platform.system()
 if current_os == "Darwin":
@@ -638,13 +703,13 @@ elif current_os == "Linux":
     terminal_options = ["Standard"]
 else:
     terminal_options = []
-tk.Label(connect_frame, text="Terminal:").grid(row=6, column=0, sticky="w")
+tk.Label(connect_frame, text="Terminal:").grid(row=7, column=0, sticky="w")
 terminal_var = tk.StringVar()
 terminal_combobox = ttk.Combobox(connect_frame, textvariable=terminal_var, state="readonly")
 terminal_combobox["values"] = terminal_options
 if terminal_options:
     terminal_var.set(terminal_options[0])
-terminal_combobox.grid(row=6, column=1, columnspan=2, sticky="ew")
+terminal_combobox.grid(row=7, column=1, columnspan=2, sticky="ew")
 
 # ---- Column 2: Download ----
 download_frame = tk.LabelFrame(root, text="Download from instance", padx=10, pady=10)
@@ -742,6 +807,8 @@ def load_last_used_config():
         ip_entry.insert(0, config.get("ip_address", ""))
         key_file_entry.delete(0, tk.END)
         key_file_entry.insert(0, config.get("key_path", ""))
+        port_entry.delete(0, tk.END)
+        port_entry.insert(0, config.get("port", "22"))
 
 
 load_last_used_config()
