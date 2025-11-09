@@ -1,25 +1,51 @@
 # SSH GUI Tool
 
-A graphical user interface (GUI) application written in **native Python** using Tkinter for managing SSH connections and file transfers. This tool allows users to connect to remote SSH instances, download files from, and upload files to those instances, all without needing external libraries beyond the standard Python installation.
+A professional graphical user interface (GUI) application for managing SSH connections and file transfers. Built with **native Python** using Tkinter, this tool provides an intuitive interface for SSH operations without requiring external dependencies beyond the standard Python installation.
 
 ## Features
 
-- **Connect to Remote SSH Instances**: Input SSH credentials and open a new terminal window to start an SSH session.
-- **Remote File Browser**: A built-in GUI browser to explore remote directories over SSH. Easily navigate directories, view files, and select files or directories for download/upload.
-- **Download Files**: Retrieve files from a remote server to a local destination.
-- **Upload Files**: Transfer files from a local system to a remote server.
-- **Configuration Management**: Save and load SSH connection settings for convenience.
+- **🔐 SSH Connection Management**: Securely connect to remote servers with SSH key authentication
+- **📁 Remote File Browser**: Built-in GUI browser to explore remote directories over SSH
+- **⬇️ File Downloads**: Efficient file transfers from remote servers using rsync
+- **⬆️ File Uploads**: Upload files and directories to remote servers with progress tracking
+- **💾 Configuration Management**: Save and load SSH connection settings for quick access
+- **📊 Disk Space Monitoring**: Check available disk space on remote servers
+- **🖥️ Multi-Terminal Support**: Launch SSH sessions in your preferred terminal (Standard, Warp on macOS)
+- **⚡ Real-time Progress**: Live transfer speed, ETA, and progress visualization
+
+## Project Structure
+
+```
+ssh_gui/
+├── ssh_gui.py              # Main entry point
+├── src/
+│   ├── __init__.py
+│   ├── functionality.py    # Business logic and SSH operations
+│   ├── visuals.py          # GUI components and styling
+│   ├── remote_file_browser.py  # Remote filesystem browser
+│   └── run_in_warp.sh      # Warp terminal launcher (macOS)
+├── configurations/         # Saved SSH configurations
+├── requirements.txt        # Python dependencies
+├── Readme.md              # This file
+└── LICENSE                # MIT License
+
+```
 
 ## Prerequisites
 
-- Python 3.x
-- Tkinter (comes pre-installed with Python)
-- SSH client (such as OpenSSH)
-- (Optional) [Warp](https://www.warp.dev/i) terminal for MacOS
-   - Can be installed by [Download](https://app.warp.dev/get_warp?package=dmg) or by running:
-      ```bash
-      brew install --cask warp
-      ```
+- **Python 3.7+** with Tkinter (pre-installed with Python)
+- **SSH client** (OpenSSH recommended)
+- **rsync** for file transfers
+- **(Optional)** [Warp Terminal](https://www.warp.dev/) for enhanced macOS terminal experience
+
+### Installing Warp (macOS only)
+
+```bash
+# Via Homebrew
+brew install --cask warp
+
+# Or download from https://app.warp.dev/get_warp?package=dmg
+```
 
 ## Installation
 
@@ -27,62 +53,177 @@ A graphical user interface (GUI) application written in **native Python** using 
 
    ```bash
    git clone https://github.com/seba2390/ssh_gui.git
+   cd ssh_gui
    ```
 
-2. **(Optional) Enable usage of [Warp](https://www.warp.dev/i) terminal**
+2. **Make Warp Script Executable** (Optional, macOS only)
+
    ```bash
    chmod +x src/run_in_warp.sh
    ```
-   - allow system access first time running and restart GUI
+
+   Note: Allow system access on first run and restart the GUI if needed.
 
 ## Usage
-1. **Running the application**
 
-    move into the repo:
-    ```bash
-    cd ssh_gui
+### Running the Application
+
+From the repository directory:
+
+```bash
+python ssh_gui.py
+```
+
+The application window displays two main sections:
+
+#### 1. Connection Panel (Left)
+- **Username**: SSH username for authentication
+- **IP Address**: Target server IP or hostname
+- **Port**: SSH port (default: 22)
+- **SSH Key File**: Path to your private SSH key
+- **Load Config**: Load saved connection settings
+- **Terminal**: Choose terminal type (Standard/Warp)
+- **Connect**: Launch SSH terminal session
+- **Test Connection**: Verify SSH credentials
+- **Check Disk Space**: Display remote server disk usage
+
+#### 2. File Transfer Panel (Right)
+
+**Upload Section:**
+- **Local File Path**: Select local file or directory to upload
+- **Remote Destination Path**: Target path on remote server
+- **Start Upload**: Initiate upload with progress tracking
+
+**Download Section:**
+- **Remote File Path**: Path to file/directory on remote server
+- **Local Destination Path**: Local save location
+- **Start Download**: Begin download with real-time progress
+
+### Configuration Management
+
+**Saving Configurations:**
+- Configurations are automatically saved when you connect to a server
+- Saved to `configurations/` directory as `config_1.json`, `config_2.json`, etc.
+- Duplicate configurations are automatically prevented
+
+**Loading Configurations:**
+1. Click "Load Config" button
+2. Select a JSON file from the file dialog
+3. Connection fields will be automatically populated
+4. The most recent configuration is loaded on startup
+
+### Remote File Browser
+
+Navigate remote filesystems visually:
+
+1. Click the "..." button next to any remote path field
+2. Browse directories using the tree view
+3. Use ← and → buttons for navigation
+4. Double-click folders to enter them
+5. Select files/folders and click "Select"
+
+### File Transfer Progress
+
+Real-time monitoring includes:
+- **Progress bar**: Visual completion indicator
+- **Speed**: Current transfer rate (KB/s, MB/s, GB/s)
+- **ETA**: Estimated time to completion
+- **Status**: Current operation and percentage
+- **Filename**: Currently transferring file (for multi-file operations)
+
+## Creating a macOS Application
+
+On macOS, create a clickable app icon:
+
+1. Open **Automator**
+2. File → New → Application
+3. Search for "Run Shell Script" in Actions
+4. Add this script:
+   ```bash
+   /usr/bin/python3 /full/path/to/ssh_gui/ssh_gui.py
    ```
-    run the python script:
-    ```bash
-    python ssh_gui.py
-   ```
-The application window will display three sections:
+   Replace `/full/path/to/ssh_gui/` with your actual path (find with `pwd` in the repo directory)
+5. File → Save (⌘S) and name it "SSH GUI"
+6. Drag to Dock or Applications folder
 
-- **Connect to instance**: Enter the SSH username, IP address, and path to the SSH key file. Click "Connect" to initiate an SSH session.
-- **Download from instance**:  Provide the remote file path and local destination path. Click "Download" to transfer the file from the remote server to your local machine.
-- **Upload to instance**:  Provide the local file path and remote destination path. Click "Upload" to transfer the file from your local machine to the remote server.
+**Tip**: Find your Python path with `which python3` in Terminal.
 
-**N.B** Use the "Browse" buttons next to the file path fields to select files and directories via file dialogs.
+## Technical Details
 
-2. **Configuration management**
-- **Loading Configuration**: Use the "Load Config" button in the "Connect to instance" section to open a file dialog and select a JSON configuration file from the configurations folder. The application will load the selected configuration and update the input fields with the saved values.
-- **Saving Configuration**: When you connect to an SSH instance, the application saves the configuration to a new file in the configurations folder. If the new configuration differs from the existing default configuration (config.json), it will be saved in a file with an incremental number (e.g., config_1.json, config_2.json, etc.) to avoid overwriting.
+### Architecture
 
-3. **Remote File Browser**
+- **ssh_gui.py**: Application entry point and initialization
+- **functionality.py**: Core SSH operations, rsync, configuration management
+- **visuals.py**: Tkinter GUI components, styling, event handlers
+- **remote_file_browser.py**: SSH-based file system browser implementation
 
-- Use the Remote Browser to navigate the file structure of your SSH-connected remote instance.
-In both the "Download from instance" and "Upload to instance" sections, you can click the "Browse" button next to the file path fields to open a remote file browser. This allows you to visually navigate directories on the remote server, and select the files or directories to transfer.
+### SSH Security
 
+- Uses key-based authentication (password auth not supported)
+- StrictHostKeyChecking disabled for convenience (use in controlled environments)
+- Keep-alive enabled (60s interval, 2 max retries)
 
-**(MacOS only) Creating application icon**
-- On MacOS it is possible to avoid having to open the program via terminal:
-   1. Open Automator.
-   2. Press File>New (CMD+N) and choose "Application".
-   3. Search for "Run Shell Script" under "Actions" in the LHS of the window.
-   4. fill out the script with:
-      ```bash
-      <path-to-python3> <path-to-ssh_gui_repo>/ssh_gui.py
-      ```
-      N.B. ```<path-to-python3>``` can be determined by opening terminal and running ```which python3``` and ```<path-to-ssh_gui_repo>``` is the path to where you ran ```git clone https://github.com/seba2390/ssh_gui.git```
-   5. Press File>Save (CMD+S) and save the application where you want.
-      N.B. you can drag this to the Dock for easy access. 
+### File Transfer Details
 
+- Uses rsync for efficient incremental transfers
+- Compression enabled (`-z` flag)
+- Archive mode preserves permissions and timestamps (`-a` flag)
+- Progress tracking (`-P` flag)
+- Works with both files and directories
 
-## Notes
-The application saves the SSH connection settings in a file named config.json. This file is used to retain the last entered SSH credentials and key path.
+### Platform Support
 
-The application currently supports macOS and Linux. If you're using a different operating system, you'll see an error message indicating unsupported OS.
+- **macOS**: Full support including Warp terminal
+- **Linux**: Standard terminal support
+- **Windows**: Limited support (SSH client required)
+
+## Troubleshooting
+
+**Connection fails:**
+- Verify SSH key permissions: `chmod 600 ~/.ssh/your_key`
+- Test manual SSH: `ssh -i ~/.ssh/your_key user@host`
+- Check firewall settings and network connectivity
+
+**Warp terminal doesn't open (macOS):**
+- Ensure script is executable: `chmod +x src/run_in_warp.sh`
+- Grant Automator permissions in System Preferences → Security & Privacy
+- Restart the application after first-time permission grant
+
+**Transfer fails:**
+- Ensure rsync is installed on both local and remote systems
+- Check file path permissions
+- Verify sufficient disk space on destination
+
+**Window unresponsive on startup (macOS/Linux):**
+- This should be fixed automatically with built-in window focus handling
+- If issues persist, try moving the window slightly
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with Python's native Tkinter for zero external dependencies
+- Uses rsync for efficient file transfers
+- Inspired by the need for a simple, portable SSH GUI tool
+
+## Version History
+
+- **v2.0** - Complete refactor with modular architecture, enhanced documentation
+- **v1.0** - Initial release with basic SSH and file transfer capabilities
+
+## Author
+
+**SSH GUI Team**
+Repository: [github.com/seba2390/ssh_gui](https://github.com/seba2390/ssh_gui)
