@@ -653,49 +653,99 @@ def load_config_file():
 # GUI setup
 
 root = tk.Tk()
-root.title("SSH Connect")
+root.title("SSH Connect Pro")
 
+# Dark modern color scheme
+BG_COLOR = "#1a1d29"
+FRAME_BG = "#252936"
+PRIMARY_COLOR = "#00d4ff"
+PRIMARY_HOVER = "#00b8e6"
+SUCCESS_COLOR = "#00ff88"
+DANGER_COLOR = "#ff0055"
+TEXT_COLOR = "#e4e6eb"
+LABEL_COLOR = "#8b92a8"
+ENTRY_BG = "#2f3241"
+BORDER_COLOR = "#3d4152"
+ACCENT_COLOR = "#7b61ff"
+
+# Configure root window
+root.configure(bg=BG_COLOR)
+root.geometry("1150x520")
+root.minsize(1100, 500)
+
+# Configure grid weights for responsive layout
 root.grid_columnconfigure(0, weight=1)
 root.grid_columnconfigure(1, weight=1)
 root.grid_columnconfigure(2, weight=1)
+root.grid_rowconfigure(0, weight=1)
+
+# Modern font styles
+TITLE_FONT = ("SF Pro Display", 12, "bold") if platform.system() == "Darwin" else ("Segoe UI", 12, "bold")
+LABEL_FONT = ("SF Pro Text", 9) if platform.system() == "Darwin" else ("Segoe UI", 9)
+BUTTON_FONT = ("SF Pro Text", 10) if platform.system() == "Darwin" else ("Segoe UI", 10)
+ENTRY_FONT = ("SF Mono", 9) if platform.system() == "Darwin" else ("Consolas", 9)
 
 # ---- Column 1: Connection ----
-connect_frame = tk.LabelFrame(root, text="Connecting to instance", padx=10, pady=10)
-connect_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+connect_frame = tk.LabelFrame(
+    root,
+    text="  CONNECTION  ",
+    padx=16,
+    pady=16,
+    bg=FRAME_BG,
+    fg=PRIMARY_COLOR,
+    font=TITLE_FONT,
+    relief="flat",
+    bd=0,
+    highlightthickness=1,
+    highlightbackground=BORDER_COLOR
+)
+connect_frame.grid(row=0, column=0, padx=8, pady=8, sticky="nsew")
 
-tk.Label(connect_frame, text="Username:").grid(row=0, column=0, sticky="w")
-username_entry = tk.Entry(connect_frame)
-username_entry.grid(row=0, column=1)
+# Username
+tk.Label(connect_frame, text="Username", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=0, column=0, sticky="w", pady=(0, 4)
+)
+username_entry = tk.Entry(connect_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                          highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                          insertbackground=PRIMARY_COLOR)
+username_entry.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 10), ipady=6)
 
-tk.Label(connect_frame, text="IP Address:").grid(row=1, column=0, sticky="w")
-ip_entry = tk.Entry(connect_frame)
-ip_entry.grid(row=1, column=1)
+# IP Address
+tk.Label(connect_frame, text="IP Address", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=2, column=0, sticky="w", pady=(0, 4)
+)
+ip_entry = tk.Entry(connect_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                    highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                    insertbackground=PRIMARY_COLOR)
+ip_entry.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(0, 10), ipady=6)
 
-tk.Label(connect_frame, text="Port:").grid(row=2, column=0, sticky="w")
-port_entry = tk.Entry(connect_frame)
-port_entry.insert(0, "22")  # Default SSH port
-port_entry.grid(row=2, column=1)
+# Port
+tk.Label(connect_frame, text="Port", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=4, column=0, sticky="w", pady=(0, 4)
+)
+port_entry = tk.Entry(connect_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                      highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                      insertbackground=PRIMARY_COLOR)
+port_entry.insert(0, "22")
+port_entry.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(0, 10), ipady=6)
 
-tk.Label(connect_frame, text="SSH Key File:").grid(row=3, column=0, sticky="w")
-key_file_entry = tk.Entry(connect_frame)
-key_file_entry.grid(row=3, column=1)
-browse_button = tk.Button(connect_frame, text="Browse", command=browse_key_file)
-browse_button.grid(row=3, column=2, padx=5)
+# SSH Key File
+tk.Label(connect_frame, text="SSH Key File", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=6, column=0, sticky="w", pady=(0, 4)
+)
+key_file_entry = tk.Entry(connect_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                          highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                          insertbackground=PRIMARY_COLOR)
+key_file_entry.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(0, 10), ipady=6)
+browse_button = tk.Button(connect_frame, text="...", command=browse_key_file, bg=ENTRY_BG, fg=LABEL_COLOR,
+                         font=BUTTON_FONT, relief="flat", bd=0, cursor="hand2",
+                         activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
+browse_button.grid(row=7, column=2, padx=(6, 0), pady=(0, 10))
 
-connect_button = tk.Button(connect_frame, text="Connect", command=connect_to_instance)
-connect_button.grid(row=4, column=0, columnspan=3, pady=10)
-load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file)
-load_config_button.grid(row=5, column=0, columnspan=3, pady=10)
-test_connection_button = tk.Button(connect_frame, text="Test Connection", command=test_connection)
-test_connection_button.grid(row=6, column=0, columnspan=3, pady=10)
-
-# Disk space check button and label
-check_disk_button = tk.Button(connect_frame, text="Check Disk Space", command=check_disk_space)
-check_disk_button.grid(row=8, column=0, columnspan=3, pady=10)
-
-disk_space_label = tk.Label(connect_frame, text="", font=("TkDefaultFont", 9), wraplength=250)
-disk_space_label.grid(row=9, column=0, columnspan=3, pady=5)
-
+# Terminal
+tk.Label(connect_frame, text="Terminal", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=8, column=0, sticky="w", pady=(0, 4)
+)
 current_os = platform.system()
 if current_os == "Darwin":
     terminal_options = ["Standard", "Warp"]
@@ -703,89 +753,202 @@ elif current_os == "Linux":
     terminal_options = ["Standard"]
 else:
     terminal_options = []
-tk.Label(connect_frame, text="Terminal:").grid(row=7, column=0, sticky="w")
 terminal_var = tk.StringVar()
-terminal_combobox = ttk.Combobox(connect_frame, textvariable=terminal_var, state="readonly")
+terminal_combobox = ttk.Combobox(connect_frame, textvariable=terminal_var, state="readonly", font=ENTRY_FONT)
 terminal_combobox["values"] = terminal_options
 if terminal_options:
     terminal_var.set(terminal_options[0])
-terminal_combobox.grid(row=7, column=1, columnspan=2, sticky="ew")
+terminal_combobox.grid(row=9, column=0, columnspan=3, sticky="ew", pady=(0, 12), ipady=4)
+
+# Buttons with modern styling
+button_style = {
+    "font": BUTTON_FONT,
+    "relief": "flat",
+    "bd": 0,
+    "cursor": "hand2",
+    "pady": 8
+}
+
+connect_button = tk.Button(connect_frame, text="Connect", command=connect_to_instance,
+                          bg=PRIMARY_COLOR, fg=BG_COLOR, activebackground=PRIMARY_HOVER,
+                          activeforeground=BG_COLOR, **button_style)
+connect_button.grid(row=10, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+
+test_connection_button = tk.Button(connect_frame, text="Test Connection", command=test_connection,
+                                  bg=SUCCESS_COLOR, fg=BG_COLOR, activebackground="#00e67a",
+                                  activeforeground=BG_COLOR, **button_style)
+test_connection_button.grid(row=11, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+
+check_disk_button = tk.Button(connect_frame, text="Check Disk Space", command=check_disk_space,
+                             bg=ACCENT_COLOR, fg="white", activebackground="#6950e6",
+                             activeforeground="white", **button_style)
+check_disk_button.grid(row=12, column=0, columnspan=3, sticky="ew", pady=(0, 6))
+
+load_config_button = tk.Button(connect_frame, text="Load Config", command=load_config_file,
+                              bg=BORDER_COLOR, fg=TEXT_COLOR, activebackground="#4a4d5e",
+                              activeforeground=TEXT_COLOR, **button_style)
+load_config_button.grid(row=13, column=0, columnspan=3, sticky="ew")
+
+# Disk space label
+disk_space_label = tk.Label(connect_frame, text="", font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8),
+                           bg=FRAME_BG, fg=LABEL_COLOR, wraplength=280, justify="center")
+disk_space_label.grid(row=14, column=0, columnspan=3, pady=(10, 0))
+
+connect_frame.grid_columnconfigure(0, weight=1)
 
 # ---- Column 2: Download ----
-download_frame = tk.LabelFrame(root, text="Download from instance", padx=10, pady=10)
-download_frame.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+download_frame = tk.LabelFrame(
+    root,
+    text="  DOWNLOAD  ",
+    padx=16,
+    pady=16,
+    bg=FRAME_BG,
+    fg=PRIMARY_COLOR,
+    font=TITLE_FONT,
+    relief="flat",
+    bd=0,
+    highlightthickness=1,
+    highlightbackground=BORDER_COLOR
+)
+download_frame.grid(row=0, column=1, padx=8, pady=8, sticky="nsew")
 
-tk.Label(download_frame, text="Remote File Path:").grid(row=0, column=0, sticky="w")
-remote_file_entry = tk.Entry(download_frame)
-remote_file_entry.grid(row=0, column=1)
-browse_remote_file_button = tk.Button(download_frame, text="Browse", command=browse_remote_file)
-browse_remote_file_button.grid(row=0, column=2, padx=5)
+# Remote File Path
+tk.Label(download_frame, text="Remote File Path", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=0, column=0, sticky="w", pady=(0, 4)
+)
+remote_file_entry = tk.Entry(download_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                             highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                             insertbackground=PRIMARY_COLOR)
+remote_file_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10), ipady=6)
+browse_remote_file_button = tk.Button(download_frame, text="...", command=browse_remote_file, bg=ENTRY_BG, fg=LABEL_COLOR,
+                                     font=BUTTON_FONT, relief="flat", bd=0, cursor="hand2",
+                                     activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
+browse_remote_file_button.grid(row=1, column=2, padx=(6, 0), pady=(0, 10))
 
-tk.Label(download_frame, text="Local Destination Path:").grid(row=1, column=0, sticky="w")
-local_path_entry = tk.Entry(download_frame)
-local_path_entry.grid(row=1, column=1)
-browse_local_button = tk.Button(download_frame, text="Browse", command=browse_local_path)
-browse_local_button.grid(row=1, column=2, padx=5)
+# Local Destination Path
+tk.Label(download_frame, text="Local Destination Path", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=2, column=0, sticky="w", pady=(0, 4)
+)
+local_path_entry = tk.Entry(download_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                           highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                           insertbackground=PRIMARY_COLOR)
+local_path_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 12), ipady=6)
+browse_local_button = tk.Button(download_frame, text="...", command=browse_local_path, bg=ENTRY_BG, fg=LABEL_COLOR,
+                               font=BUTTON_FONT, relief="flat", bd=0, cursor="hand2",
+                               activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
+browse_local_button.grid(row=3, column=2, padx=(6, 0), pady=(0, 12))
 
-download_button = tk.Button(download_frame, text="Download", command=download_file)
-download_button.grid(row=2, column=0, columnspan=3, pady=10)
+download_button = tk.Button(download_frame, text="Start Download", command=download_file,
+                           bg=SUCCESS_COLOR, fg=BG_COLOR, activebackground="#00e67a",
+                           activeforeground=BG_COLOR, **button_style)
+download_button.grid(row=4, column=0, columnspan=3, sticky="ew", pady=(0, 10))
 
-download_status_label = tk.Label(download_frame, text="")
-download_status_label.grid(row=3, column=0, columnspan=3, pady=5)
+download_status_label = tk.Label(download_frame, text="", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT)
+download_status_label.grid(row=5, column=0, columnspan=3, pady=(0, 8))
 
 download_progress = ttk.Progressbar(download_frame, orient="horizontal", mode="determinate", length=300)
-download_progress.grid(row=4, column=0, columnspan=3, pady=5)
+download_progress.grid(row=6, column=0, columnspan=3, pady=(0, 8), sticky="ew")
 
-download_live_file_label = tk.Label(download_frame, text="", width=30)
-download_live_file_label.grid(row=5, column=0, columnspan=3)
-download_speed_label = tk.Label(download_frame, text="", width=15)
-download_speed_label.grid(row=6, column=0, columnspan=2, sticky="w")
-download_eta_label = tk.Label(download_frame, text="", width=15)
-download_eta_label.grid(row=6, column=2, sticky="w")
+download_live_file_label = tk.Label(download_frame, text="", bg=FRAME_BG, fg=TEXT_COLOR,
+                                   font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8),
+                                   wraplength=280)
+download_live_file_label.grid(row=7, column=0, columnspan=3, pady=(0, 4))
+
+stats_frame_download = tk.Frame(download_frame, bg=FRAME_BG)
+stats_frame_download.grid(row=8, column=0, columnspan=3, sticky="ew")
+stats_frame_download.grid_columnconfigure(0, weight=1)
+stats_frame_download.grid_columnconfigure(1, weight=1)
+
+download_speed_label = tk.Label(stats_frame_download, text="", bg=FRAME_BG, fg=LABEL_COLOR,
+                               font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8))
+download_speed_label.grid(row=0, column=0, sticky="w")
+download_eta_label = tk.Label(stats_frame_download, text="", bg=FRAME_BG, fg=LABEL_COLOR,
+                             font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8))
+download_eta_label.grid(row=0, column=1, sticky="e")
 
 # Hide download widgets initially
 download_progress.grid_remove()
 download_live_file_label.grid_remove()
-download_speed_label.grid_remove()
-download_eta_label.grid_remove()
+stats_frame_download.grid_remove()
+
+download_frame.grid_columnconfigure(0, weight=1)
 
 # ---- Column 3: Upload ----
-upload_frame = tk.LabelFrame(root, text="Upload to instance", padx=10, pady=10)
-upload_frame.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+upload_frame = tk.LabelFrame(
+    root,
+    text="  UPLOAD  ",
+    padx=16,
+    pady=16,
+    bg=FRAME_BG,
+    fg=PRIMARY_COLOR,
+    font=TITLE_FONT,
+    relief="flat",
+    bd=0,
+    highlightthickness=1,
+    highlightbackground=BORDER_COLOR
+)
+upload_frame.grid(row=0, column=2, padx=8, pady=8, sticky="nsew")
 
-tk.Label(upload_frame, text="Local File Path:").grid(row=0, column=0, sticky="w")
-local_file_entry = tk.Entry(upload_frame)
-local_file_entry.grid(row=0, column=1)
-browse_local_file_button = tk.Button(upload_frame, text="Browse", command=browse_local_file)
-browse_local_file_button.grid(row=0, column=2, padx=5)
+# Local File Path
+tk.Label(upload_frame, text="Local File Path", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=0, column=0, sticky="w", pady=(0, 4)
+)
+local_file_entry = tk.Entry(upload_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                           highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                           insertbackground=PRIMARY_COLOR)
+local_file_entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10), ipady=6)
+browse_local_file_button = tk.Button(upload_frame, text="...", command=browse_local_file, bg=ENTRY_BG, fg=LABEL_COLOR,
+                                    font=BUTTON_FONT, relief="flat", bd=0, cursor="hand2",
+                                    activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
+browse_local_file_button.grid(row=1, column=2, padx=(6, 0), pady=(0, 10))
 
-tk.Label(upload_frame, text="Remote Destination Path:").grid(row=1, column=0, sticky="w")
-remote_path_upload_entry = tk.Entry(upload_frame)
-remote_path_upload_entry.grid(row=1, column=1)
-browse_remote_path_button = tk.Button(upload_frame, text="Browse", command=browse_remote_path)
-browse_remote_path_button.grid(row=1, column=2, padx=5)
+# Remote Destination Path
+tk.Label(upload_frame, text="Remote Destination Path", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT, anchor="w").grid(
+    row=2, column=0, sticky="w", pady=(0, 4)
+)
+remote_path_upload_entry = tk.Entry(upload_frame, font=ENTRY_FONT, bg=ENTRY_BG, fg=TEXT_COLOR, relief="flat", bd=0,
+                                    highlightthickness=1, highlightbackground=BORDER_COLOR, highlightcolor=PRIMARY_COLOR,
+                                    insertbackground=PRIMARY_COLOR)
+remote_path_upload_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 12), ipady=6)
+browse_remote_path_button = tk.Button(upload_frame, text="...", command=browse_remote_path, bg=ENTRY_BG, fg=LABEL_COLOR,
+                                     font=BUTTON_FONT, relief="flat", bd=0, cursor="hand2",
+                                     activebackground=BORDER_COLOR, activeforeground=TEXT_COLOR, padx=12)
+browse_remote_path_button.grid(row=3, column=2, padx=(6, 0), pady=(0, 12))
 
-upload_button = tk.Button(upload_frame, text="Upload", command=upload_file)
-upload_button.grid(row=2, column=0, columnspan=3, pady=10)
+upload_button = tk.Button(upload_frame, text="Start Upload", command=upload_file,
+                         bg=PRIMARY_COLOR, fg=BG_COLOR, activebackground=PRIMARY_HOVER,
+                         activeforeground=BG_COLOR, **button_style)
+upload_button.grid(row=4, column=0, columnspan=3, sticky="ew", pady=(0, 10))
 
-upload_status_label = tk.Label(upload_frame, text="")
-upload_status_label.grid(row=3, column=0, columnspan=3, pady=5)
+upload_status_label = tk.Label(upload_frame, text="", bg=FRAME_BG, fg=LABEL_COLOR, font=LABEL_FONT)
+upload_status_label.grid(row=5, column=0, columnspan=3, pady=(0, 8))
 
 upload_progress = ttk.Progressbar(upload_frame, orient="horizontal", mode="determinate", length=300)
-upload_progress.grid(row=4, column=0, columnspan=3, pady=5)
+upload_progress.grid(row=6, column=0, columnspan=3, pady=(0, 8), sticky="ew")
 
-upload_live_file_label = tk.Label(upload_frame, text="", width=30)
-upload_live_file_label.grid(row=5, column=0, columnspan=3)
-upload_speed_label = tk.Label(upload_frame, text="", width=15)
-upload_speed_label.grid(row=6, column=0, columnspan=2, sticky="w")
-upload_eta_label = tk.Label(upload_frame, text="", width=15)
-upload_eta_label.grid(row=6, column=2, sticky="w")
+upload_live_file_label = tk.Label(upload_frame, text="", bg=FRAME_BG, fg=TEXT_COLOR,
+                                 font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8),
+                                 wraplength=280)
+upload_live_file_label.grid(row=7, column=0, columnspan=3, pady=(0, 4))
+
+stats_frame_upload = tk.Frame(upload_frame, bg=FRAME_BG)
+stats_frame_upload.grid(row=8, column=0, columnspan=3, sticky="ew")
+stats_frame_upload.grid_columnconfigure(0, weight=1)
+stats_frame_upload.grid_columnconfigure(1, weight=1)
+
+upload_speed_label = tk.Label(stats_frame_upload, text="", bg=FRAME_BG, fg=LABEL_COLOR,
+                             font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8))
+upload_speed_label.grid(row=0, column=0, sticky="w")
+upload_eta_label = tk.Label(stats_frame_upload, text="", bg=FRAME_BG, fg=LABEL_COLOR,
+                           font=("SF Mono", 8) if platform.system() == "Darwin" else ("Consolas", 8))
+upload_eta_label.grid(row=0, column=1, sticky="e")
 
 # Hide upload widgets initially
 upload_progress.grid_remove()
 upload_live_file_label.grid_remove()
-upload_speed_label.grid_remove()
-upload_eta_label.grid_remove()
+stats_frame_upload.grid_remove()
+
+upload_frame.grid_columnconfigure(0, weight=1)
 
 
 def load_last_used_config():
