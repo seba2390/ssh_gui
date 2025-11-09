@@ -364,16 +364,24 @@ def is_remote_directory(key_path: str, username: str, ip_address: str, remote_pa
         >>> if is_dir:
         >>>     print("Path is a directory")
     """
+    logger.debug(f"is_remote_directory: Checking {remote_path} on {username}@{ip_address}:{port}")
     # Use shell test command to check if path is a directory
-    ssh_command = f"ssh -i {key_path} -p {port} {username}@{ip_address} 'test -d {remote_path} && echo directory || echo file'"
+    ssh_command = f"ssh -i {key_path} -p {port} -o StrictHostKeyChecking=no {username}@{ip_address} 'test -d {remote_path} && echo directory || echo file'"
+    logger.debug(f"is_remote_directory: SSH command: {ssh_command}")
+
     result = subprocess.run(ssh_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    logger.debug(f"is_remote_directory: Exit code: {result.returncode}, stdout: {result.stdout.strip()}, stderr: {result.stderr.strip()}")
 
     if "directory" in result.stdout:
+        logger.info(f"is_remote_directory: {remote_path} is a DIRECTORY")
         return True
     elif "file" in result.stdout:
+        logger.info(f"is_remote_directory: {remote_path} is a FILE")
         return False
     else:
-        raise Exception(f"Unable to determine if {remote_path} is a directory or file. SSH Error: {result.stderr}")
+        error_msg = f"Unable to determine if {remote_path} is a directory or file. SSH Error: {result.stderr}"
+        logger.error(f"is_remote_directory: {error_msg}")
+        raise Exception(error_msg)
 
 
 def open_ssh_terminal(key_path: str, username: str, ip_address: str, port: str, terminal_type: str) -> None:
@@ -503,7 +511,15 @@ def run_rsync_command(
         ...     eta_label=eta_label
         ... )
     """
+    logger.info("=" * 80)
+    logger.info(f"run_rsync_command called: direction={direction}")
+    logger.info(f"Source: {src_path}")
+    logger.info(f"Destination: {dest_path}")
+    logger.info(f"Connection: {username}@{ip_address}:{port}")
+    logger.debug(f"Key path: {key_path}")
+
     # Initialize progress tracking
+    logger.debug("Initializing progress bar to 0")
     schedule_gui_update(progress_bar, lambda: progress_bar.__setitem__("value", 0))
     is_directory = False
 
@@ -513,10 +529,12 @@ def run_rsync_command(
     last_time = start_time
 
     # Determine if source is a directory for appropriate handling
+    logger.debug(f"Checking if source is a directory...")
     if direction == "download":
         is_directory = is_remote_directory(key_path, username, ip_address, src_path, port)
     elif direction == "upload":
         is_directory = os.path.isdir(src_path)
+    logger.info(f"Source is {'directory' if is_directory else 'file'}")
 
     # Update status label based on source type
     if is_directory:
