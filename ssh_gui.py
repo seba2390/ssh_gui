@@ -813,5 +813,12 @@ def load_last_used_config():
 
 load_last_used_config()
 
+# Fix for macOS and Linux: Force window to front and give it focus
+if platform.system() in ["Darwin", "Linux"]:
+    root.lift()
+    root.attributes('-topmost', True)
+    root.after(100, lambda: root.attributes('-topmost', False))
+    root.focus_force()
+
 # Run the application
 root.mainloop()
