@@ -88,6 +88,10 @@ class SSHGuiApp:
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
 
+        # Store references to active transfer processes
+        self.upload_process = None
+        self.download_process = None
+
         # Create GUI components
         logger.info("Creating GUI components...")
         self.create_connection_frame()
@@ -96,9 +100,6 @@ class SSHGuiApp:
 
         # Load last used configuration
         self.load_last_config()
-
-        # Apply platform-specific window focus fix
-        self.apply_window_focus_fix()
 
         logger.info("SSH GUI Application window fully initialized and ready")
         logger.info("=" * 80)
@@ -262,6 +263,13 @@ class SSHGuiApp:
                              activeforeground=self.BG_COLOR, **self.button_style)
         upload_button.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(0, 8), ipady=0)
 
+        # Cancel upload button (hidden by default)
+        self.cancel_upload_button = tk.Button(transfer_frame, text="Cancel Upload", command=self.cancel_upload,
+                                         bg=self.DANGER_COLOR, fg=self.BG_COLOR, activebackground="#cc0044",
+                                         activeforeground=self.BG_COLOR, **self.button_style)
+        self.cancel_upload_button.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(0, 8), ipady=0)
+        self.cancel_upload_button.grid_remove()  # Hidden by default
+
         self.upload_status_label = tk.Label(transfer_frame, text="", bg=self.FRAME_BG, fg=self.LABEL_COLOR, font=self.LABEL_FONT)
         self.upload_status_label.grid(row=6, column=0, columnspan=3, pady=(0, 6))
 
@@ -328,6 +336,13 @@ class SSHGuiApp:
                                bg=self.SUCCESS_COLOR, fg=self.BG_COLOR, activebackground="#00e67a",
                                activeforeground=self.BG_COLOR, **self.button_style)
         download_button.grid(row=16, column=0, columnspan=3, sticky="ew", pady=(0, 5), ipady=0)
+
+        # Cancel download button (hidden by default)
+        self.cancel_download_button = tk.Button(transfer_frame, text="Cancel Download", command=self.cancel_download,
+                                           bg=self.DANGER_COLOR, fg=self.BG_COLOR, activebackground="#cc0044",
+                                           activeforeground=self.BG_COLOR, **self.button_style)
+        self.cancel_download_button.grid(row=16, column=0, columnspan=3, sticky="ew", pady=(0, 5), ipady=0)
+        self.cancel_download_button.grid_remove()  # Hidden by default
 
         self.download_status_label = tk.Label(transfer_frame, text="", bg=self.FRAME_BG, fg=self.LABEL_COLOR, font=self.LABEL_FONT)
         self.download_status_label.grid(row=17, column=0, columnspan=3, pady=(0, 6))
@@ -450,6 +465,33 @@ class SSHGuiApp:
             self.download_eta_label.grid()
             self.download_status_label.config(text="Downloading...")
 
+            # Show cancel button
+            self.cancel_download_button.grid()
+
+            def store_download_process(process):
+                """Callback to store the download process reference."""
+                self.download_process = process
+                logger.debug(f"Download process stored: PID {process.pid}")
+
+            def hide_download_cancel(return_code):
+                """Callback to hide cancel button and reset UI when transfer completes."""
+                self.cancel_download_button.grid_remove()
+                self.download_process = None
+                logger.debug(f"Download cancel button hidden (exit code: {return_code})")
+
+                # If cancelled (exit code 20, 15, or negative), reset UI to initial state
+                if return_code == 20 or return_code == 15 or return_code < 0:
+                    logger.debug("Resetting download UI to initial state after cancellation")
+                    self.download_progress.grid_remove()
+                    self.download_progress["value"] = 0
+                    self.download_live_file_label.grid_remove()
+                    self.download_live_file_label.config(text="")
+                    self.download_speed_label.grid_remove()
+                    self.download_speed_label.config(text="")
+                    self.download_eta_label.grid_remove()
+                    self.download_eta_label.config(text="")
+                    self.download_status_label.config(text="")
+
             thread = threading.Thread(
                 target=run_rsync_command,
                 args=(
@@ -457,6 +499,10 @@ class SSHGuiApp:
                     "download", self.download_status_label, self.download_progress,
                     self.download_live_file_label, self.download_speed_label, self.download_eta_label,
                 ),
+                kwargs={
+                    "cancel_callback": store_download_process,
+                    "completion_callback": hide_download_cancel
+                }
             )
             thread.start()
             logger.info("Download thread started")
@@ -489,6 +535,33 @@ class SSHGuiApp:
             self.upload_eta_label.grid()
             self.upload_status_label.config(text="Uploading...")
 
+            # Show cancel button
+            self.cancel_upload_button.grid()
+
+            def store_upload_process(process):
+                """Callback to store the upload process reference."""
+                self.upload_process = process
+                logger.debug(f"Upload process stored: PID {process.pid}")
+
+            def hide_upload_cancel(return_code):
+                """Callback to hide cancel button and reset UI when transfer completes."""
+                self.cancel_upload_button.grid_remove()
+                self.upload_process = None
+                logger.debug(f"Upload cancel button hidden (exit code: {return_code})")
+
+                # If cancelled (exit code 20, 15, or negative), reset UI to initial state
+                if return_code == 20 or return_code == 15 or return_code < 0:
+                    logger.debug("Resetting upload UI to initial state after cancellation")
+                    self.upload_progress.grid_remove()
+                    self.upload_progress["value"] = 0
+                    self.upload_live_file_label.grid_remove()
+                    self.upload_live_file_label.config(text="")
+                    self.upload_speed_label.grid_remove()
+                    self.upload_speed_label.config(text="")
+                    self.upload_eta_label.grid_remove()
+                    self.upload_eta_label.config(text="")
+                    self.upload_status_label.config(text="")
+
             thread = threading.Thread(
                 target=run_rsync_command,
                 args=(
@@ -496,6 +569,10 @@ class SSHGuiApp:
                     "upload", self.upload_status_label, self.upload_progress,
                     self.upload_live_file_label, self.upload_speed_label, self.upload_eta_label,
                 ),
+                kwargs={
+                    "cancel_callback": store_upload_process,
+                    "completion_callback": hide_upload_cancel
+                }
             )
             thread.start()
             logger.info("Upload thread started")
@@ -670,10 +747,46 @@ class SSHGuiApp:
         else:
             logger.debug("No previous configuration found")
 
-    def apply_window_focus_fix(self):
-        """Apply platform-specific window focus fix for macOS and Linux."""
-        if platform.system() in ["Darwin", "Linux"]:
-            self.root.lift()
-            self.root.attributes('-topmost', True)
-            self.root.after(100, lambda: self.root.attributes('-topmost', False))
-            self.root.focus_force()
+    def cancel_download(self):
+        """Cancel the ongoing download operation."""
+        logger.info("=" * 60)
+        logger.info("CANCEL DOWNLOAD button pressed")
+
+        if self.download_process:
+            logger.info(f"Terminating download process (PID: {self.download_process.pid})")
+            try:
+                self.download_process.terminate()
+                logger.info("Download process terminated successfully")
+
+                # Immediately reset UI to initial state
+                self.download_status_label.config(text="Download Cancelled")
+                self.cancel_download_button.grid_remove()
+
+            except Exception as e:
+                logger.error(f"Error terminating download process: {e}")
+        else:
+            logger.warning("No active download process to cancel")
+
+        logger.info("=" * 60)
+
+    def cancel_upload(self):
+        """Cancel the ongoing upload operation."""
+        logger.info("=" * 60)
+        logger.info("CANCEL UPLOAD button pressed")
+
+        if self.upload_process:
+            logger.info(f"Terminating upload process (PID: {self.upload_process.pid})")
+            try:
+                self.upload_process.terminate()
+                logger.info("Upload process terminated successfully")
+
+                # Immediately reset UI to initial state
+                self.upload_status_label.config(text="Upload Cancelled")
+                self.cancel_upload_button.grid_remove()
+
+            except Exception as e:
+                logger.error(f"Error terminating upload process: {e}")
+        else:
+            logger.warning("No active upload process to cancel")
+
+        logger.info("=" * 60)

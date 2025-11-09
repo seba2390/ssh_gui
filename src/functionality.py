@@ -452,18 +452,14 @@ def open_ssh_terminal(key_path: str, username: str, ip_address: str, port: str, 
 
 
 def run_rsync_command(
-    key_path: str,
-    username: str,
-    ip_address: str,
-    port: str,
-    src_path: str,
-    dest_path: str,
-    direction: str,
-    status_label: object,
-    progress_bar: object,
-    filename_label: Optional[object] = None,
-    speed_label: Optional[object] = None,
-    eta_label: Optional[object] = None,
+    key_path: str, username: str, ip_address: str, port: str,
+    src_path: str, dest_path: str, direction: str,
+    status_label, progress_bar,
+    filename_label=None,
+    speed_label=None,
+    eta_label=None,
+    cancel_callback=None,
+    completion_callback=None,
 ) -> None:
     """
     Execute rsync file transfer between local and remote servers with real-time progress tracking.
@@ -557,6 +553,11 @@ def run_rsync_command(
     # Start rsync process and capture output
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, text=True, bufsize=1)
     logger.debug(f"Rsync process started with PID: {process.pid}")
+
+    # Store process reference via callback for cancellation
+    if cancel_callback:
+        cancel_callback(process)
+
     progress_regex = re.compile(r"(\d+)\%")
 
     # Process rsync output line by line
@@ -643,11 +644,21 @@ def run_rsync_command(
         schedule_gui_update(progress_bar, lambda: progress_bar.__setitem__("value", 100))
         schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Complete!"))
         logger.info(f"{direction.capitalize()} transfer completed successfully")
+    elif return_code == 20 or return_code == 15 or return_code < 0:  # Process was terminated/interrupted
+        # Exit code 20: Received SIGUSR1 or SIGINT (rsync interrupted)
+        # Exit code 15: SIGTERM
+        # Negative: killed by signal
+        schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Cancelled!"))
+        logger.warning(f"{direction.capitalize()} transfer was cancelled by user (exit code: {return_code})")
     else:
         error_msg = f"rsync failed with exit code {return_code}"
         logger.error(f"{error_msg}\nCommand: {command}")
         schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Failed! (Exit code: {return_code})"))
         messagebox.showerror("Transfer Error", f"{error_msg}\nCommand: {command}")
+
+    # Call completion callback to hide cancel button and reset UI
+    if completion_callback:
+        completion_callback(return_code)
 
 
 def load_last_used_config() -> Optional[dict[str, str]]:
