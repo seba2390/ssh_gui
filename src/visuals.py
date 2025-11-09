@@ -468,25 +468,26 @@ class SSHGuiApp:
             self.local_path_entry.insert(0, local_path)
 
     def browse_local_file(self):
-        """Show dropdown to select file or directory for upload."""
-        self.browse_local_file_button.grid_remove()
-        options = ["Select File", "Select Directory"]
-        selected_option = tk.StringVar(self.root)
-        selected_option.set("Select")
-        dropdown = tk.OptionMenu(self.root, selected_option, *options, command=self.handle_local_selection)
-        dropdown.grid(row=2, column=2, padx=(6, 0), pady=(0, 10))
+        """Show dropdown menu to select file or directory for upload."""
+        # Create a styled popup menu that matches the GUI design
+        menu = tk.Menu(self.root, tearoff=0,
+                      bg=self.ENTRY_BG,
+                      fg=self.TEXT_COLOR,
+                      activebackground=self.PRIMARY_COLOR,
+                      activeforeground=self.BG_COLOR,
+                      font=self.BUTTON_FONT,
+                      relief="flat",
+                      bd=1)
 
-    def handle_local_selection(self, selection):
-        """Handle file/directory selection from dropdown."""
-        if selection == "Select File":
-            self.select_file()
-        elif selection == "Select Directory":
-            self.select_directory()
-        self.restore_browse_button()
+        menu.add_command(label="Select File", command=self.select_file)
+        menu.add_command(label="Select Directory", command=self.select_directory)
 
-    def restore_browse_button(self):
-        """Restore the browse button after selection."""
-        self.browse_local_file_button.grid()
+        # Get the button's position on screen to place the menu directly below it
+        x = self.browse_local_file_button.winfo_rootx()
+        y = self.browse_local_file_button.winfo_rooty() + self.browse_local_file_button.winfo_height()
+
+        # Display the menu at the button's location
+        menu.post(x, y)
 
     def select_file(self):
         """Open file dialog to select a single file."""
