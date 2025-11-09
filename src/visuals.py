@@ -214,7 +214,7 @@ class SSHGuiApp:
         transfer_frame.grid(row=0, column=1, padx=8, pady=8, sticky="nsew")
 
         # === UPLOAD SECTION ===
-        tk.Label(transfer_frame, text="UPLOAD", bg=self.FRAME_BG, fg=self.ACCENT_COLOR, font=self.SUBTITLE_FONT, anchor="w").grid(
+        tk.Label(transfer_frame, text="UPLOAD", bg=self.FRAME_BG, fg=self.TEXT_COLOR, font=self.SUBTITLE_FONT, anchor="w").grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 6)
         )
 
@@ -281,7 +281,7 @@ class SSHGuiApp:
         tk.Frame(transfer_frame, bg=self.BORDER_COLOR, height=1).grid(row=10, column=0, columnspan=3, sticky="ew", pady=(8, 8))
 
         # === DOWNLOAD SECTION ===
-        tk.Label(transfer_frame, text="DOWNLOAD", bg=self.FRAME_BG, fg=self.SUCCESS_COLOR, font=self.SUBTITLE_FONT, anchor="w").grid(
+        tk.Label(transfer_frame, text="DOWNLOAD", bg=self.FRAME_BG, fg=self.TEXT_COLOR, font=self.SUBTITLE_FONT, anchor="w").grid(
             row=11, column=0, columnspan=3, sticky="w", pady=(0, 6)
         )
 
