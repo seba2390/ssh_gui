@@ -15,7 +15,6 @@ Author: SSH GUI Team
 Version: 2.0
 License: MIT
 """
-
 import glob
 import json
 import logging
@@ -539,18 +538,30 @@ def run_rsync_command(
         schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} in progress..."))
 
     # Construct rsync command based on transfer direction
-    # Use -azP flags like the old working version for compatibility
-    # Properly quote paths to handle spaces and special characters
+    # Note: Due to rsync's handling of special characters through remote shells,
+    # filenames with spaces and special chars may be created with quotes.
+    # We handle this with a post-transfer cleanup step that renames quoted files.
+    # Command construction:
+    # - Quote the SSH command for the -e flag
+    # - Quote the local path (handles spaces/special chars locally)
+    # - Leave remote path unquoted (rsync's format requirement)
+    ssh_cmd = f"ssh -i {shlex.quote(key_path)} -p {port} -o StrictHostKeyChecking=no"
+
     if direction == "download":
-        command = f"rsync -azP -e 'ssh -i {shlex.quote(key_path)} -p {port} -o StrictHostKeyChecking=no' {username}@{ip_address}:{shlex.quote(src_path)} {shlex.quote(dest_path)}"
+        # For remote source: user@host:path format (no quotes around remote path)
+        remote_src = f"{username}@{ip_address}:{src_path}"
+        command = f"rsync -azP -e {shlex.quote(ssh_cmd)} {remote_src} {shlex.quote(dest_path)}"
     else:  # upload
-        command = f"rsync -azP -e 'ssh -i {shlex.quote(key_path)} -p {port} -o StrictHostKeyChecking=no' {shlex.quote(src_path)} {username}@{ip_address}:{shlex.quote(dest_path)}"
+        # For remote destination: user@host:path format (no quotes around remote path)
+        remote_dest = f"{username}@{ip_address}:{dest_path}"
+        command = f"rsync -azP -e {shlex.quote(ssh_cmd)} {shlex.quote(src_path)} {remote_dest}"
 
     logger.info(f"Starting rsync {direction}: {src_path} -> {dest_path}")
     logger.debug(f"Rsync command: {command}")
     logger.info(f"Transfer type: {'Directory' if is_directory else 'File'}")
 
     # Start rsync process and capture output
+    # Use shell=True to properly handle the escaped arguments
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, text=True, bufsize=1)
     logger.debug(f"Rsync process started with PID: {process.pid}")
 
@@ -641,6 +652,7 @@ def run_rsync_command(
     logger.info(f"Rsync process completed with return code: {return_code}")
 
     if return_code == 0:
+        # Transfer successful
         schedule_gui_update(progress_bar, lambda: progress_bar.__setitem__("value", 100))
         schedule_gui_update(status_label, lambda: status_label.config(text=f"{direction.capitalize()} Complete!"))
         logger.info(f"{direction.capitalize()} transfer completed successfully")
